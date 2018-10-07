@@ -1,15 +1,12 @@
 package com.cid.bot
 
-import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 
-class ChatActivity : AppCompatActivity() {
+class SignActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_chat)
-
-        startActivityForResult(Intent(this, SignActivity::class.java), 0)
+        setContentView(R.layout.activity_sign)
     }
 }
