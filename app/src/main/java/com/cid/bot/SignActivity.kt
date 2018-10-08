@@ -1,11 +1,13 @@
 package com.cid.bot
 
 import android.animation.ValueAnimator
+import android.app.Activity
 import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
 import android.widget.LinearLayout
+import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_sign.*
 import kotlin.math.abs
 import kotlin.math.max
@@ -20,6 +22,8 @@ class SignActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign)
+
+        setResult(Activity.RESULT_CANCELED)
 
         pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
         eTusername.setText(pref.getString(getString(R.string.pref_key_username), ""))
@@ -80,7 +84,18 @@ class SignActivity : AppCompatActivity() {
     }
 
     private fun trySignIn() {
-        // TODO: Implement
+        val username = eTusername.text.toString()
+        val password = eTpassword.text.toString()
+
+        NetworkManager.call(API.signIn(username, password), {
+            val token = it["token"].asString
+            NetworkManager.authToken = token
+
+            setResult(RESULT_OK)
+            finish()
+        }, {
+            Toast.makeText(this, "Invalid username or password.", Toast.LENGTH_SHORT).show()
+        })
     }
 
     private fun trySignUp() {
