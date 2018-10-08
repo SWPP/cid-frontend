@@ -99,7 +99,25 @@ class SignActivity : AppCompatActivity() {
     }
 
     private fun trySignUp() {
-        // TODO: Implement
+        val username = eTusername.text.toString()
+        val password = eTpassword.text.toString()
+        val passwordConfirm = eTpasswordConfirm.text.toString()
+
+        if (password != passwordConfirm) {
+            Toast.makeText(this, "Passwords are not identical.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        NetworkManager.call(API.signUp(username, password), {
+            Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
+            eTusername.setText("")
+            eTpassword.setText("")
+            eTpasswordConfirm.setText("")
+            changeMode(Mode.SIGN_IN)
+        }, {
+            // TODO: set errors on EditTexts (Currently the backend does not response error body)
+            Toast.makeText(this, "Shit... Sorry, your username or password seems to be invalid.", Toast.LENGTH_SHORT).show()
+        })
     }
 
     override fun onBackPressed() {
