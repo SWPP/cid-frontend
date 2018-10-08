@@ -1,6 +1,7 @@
 package com.cid.bot
 
 import android.animation.ValueAnimator
+import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
@@ -14,10 +15,18 @@ class SignActivity : AppCompatActivity() {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
     private var mode = Mode.SIGN_IN
+    private lateinit var pref: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign)
+
+        pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
+        eTusername.setText(pref.getString(getString(R.string.pref_key_username), ""))
+        eTpassword.setText(pref.getString(getString(R.string.pref_key_password), ""))
+        if (pref.getBoolean(getString(R.string.pref_key_auto_sign_in), false)) {
+            trySignIn()
+        }
 
         bTsignIn.setOnClickListener {
             if (mode == Mode.SIGN_IN)
@@ -79,10 +88,9 @@ class SignActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (mode == Mode.SIGN_UP) {
-            changeMode(Mode.SIGN_IN)
-            return
+        when (mode) {
+            Mode.SIGN_UP -> changeMode(Mode.SIGN_IN)
+            else -> super.onBackPressed()
         }
-        super.onBackPressed()
     }
 }
