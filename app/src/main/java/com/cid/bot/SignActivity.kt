@@ -24,6 +24,7 @@ class SignActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign)
 
+        supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
 
         pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
