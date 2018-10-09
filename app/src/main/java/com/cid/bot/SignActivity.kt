@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.support.constraint.ConstraintLayout
 import android.widget.LinearLayout
 import android.widget.Toast
+import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_sign.*
 import kotlin.math.abs
 import kotlin.math.max
@@ -83,11 +84,14 @@ class SignActivity : AppCompatActivity() {
         }.start()
     }
 
+    private var signInTask: Disposable? = null
     private fun trySignIn() {
+        if (signInTask != null) return
+
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        NetworkManager.call(API.signIn(username, password), {
+        signInTask = NetworkManager.call(API.signIn(username, password), {
             val token = it["token"].asString
             NetworkManager.authToken = token
 
@@ -95,10 +99,15 @@ class SignActivity : AppCompatActivity() {
             finish()
         }, {
             Toast.makeText(this, "Invalid username or password.", Toast.LENGTH_SHORT).show()
+        }, {
+            signInTask = null
         })
     }
 
+    private var signUpTask: Disposable? = null
     private fun trySignUp() {
+        if (signUpTask != null) return
+
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
         val passwordConfirm = eTpasswordConfirm.text.toString()
@@ -117,6 +126,8 @@ class SignActivity : AppCompatActivity() {
         }, {
             // TODO: set errors on EditTexts (Currently the backend does not response error body)
             Toast.makeText(this, "Shit... Sorry, your username or password seems to be invalid.", Toast.LENGTH_SHORT).show()
+        }, {
+            signUpTask = null
         })
     }
 
@@ -125,5 +136,11 @@ class SignActivity : AppCompatActivity() {
             Mode.SIGN_UP -> changeMode(Mode.SIGN_IN)
             else -> super.onBackPressed()
         }
+    }
+
+    override fun onDestroy() {
+        signInTask?.dispose()
+        signUpTask?.dispose()
+        super.onDestroy()
     }
 }

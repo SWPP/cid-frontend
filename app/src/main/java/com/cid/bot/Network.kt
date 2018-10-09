@@ -38,7 +38,7 @@ interface ChatBotAPI {
     @POST("/chatbot/auth/signup/")
     fun signUp(@Field("username") username: String,
                @Field("password") password: String
-): Observable<Response<JsonObject>>
+    ): Observable<Response<JsonObject>>
 
     @FormUrlEncoded
     @POST("/chatbot/auth/signin/")
@@ -53,11 +53,26 @@ object NetworkManager {
             field = "Token $value"
         }
 
-    fun <T> call(observable: Observable<Response<T>>, onSuccess: (T) -> Unit, onError: (Map<String, String>) -> Unit): Disposable {
+    /**
+     * Helper function of API methods.
+     * Provide simple abstraction of observations.
+     *
+     * @param observable Response object returned from API methods
+     * @param onSuccess  Called on success response(200)
+     * @param onError    Called on error response(not 200)
+     * @param onFinish   Called on finish whichever success or error
+     * @return A disposable object. By disposing it, you can cancel subscripting.
+     */
+    fun <T> call(observable: Observable<Response<T>>,
+                 onSuccess: (T) -> Unit,
+                 onError: (Map<String, String>) -> Unit,
+                 onFinish: () -> Unit = {}
+    ): Disposable {
         return observable
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ response ->
+                    onFinish()
                     if (response.isSuccessful)
                         response.body()?.let { onSuccess(it) }
                     else {
@@ -81,6 +96,7 @@ object NetworkManager {
                         })
                     }
                 }, { error ->
+                    onFinish()
                     error.message?.let { onError(mapOf("exception" to it)) }
                 })
     }
