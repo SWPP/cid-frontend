@@ -1,5 +1,6 @@
 package com.cid.bot
 
+import android.app.Activity
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -16,6 +17,10 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
+        requestSignIn()
+    }
+
+    private fun requestSignIn() {
         startActivityForResult(Intent(this, SignActivity::class.java), REQUEST_SIGN_IN)
     }
 
@@ -25,6 +30,11 @@ class ChatActivity : AppCompatActivity() {
                 when (resultCode) {
                     RESULT_CANCELED -> finish()
                     RESULT_OK -> {} // TODO
+                }
+            }
+            REQUEST_PROFILE -> {
+                when (resultCode) {
+                    Activity.RESULT_CANCELED -> requestSignIn()
                 }
             }
             else -> super.onActivityResult(requestCode, resultCode, data)

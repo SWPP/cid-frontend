@@ -45,6 +45,12 @@ interface ChatBotAPI {
     fun signIn(@Field("username") username: String,
                @Field("password") password: String
     ): Observable<Response<JsonObject>>
+
+    @FormUrlEncoded
+    @POST("/chatbot/auth/withdraw/")
+    fun withdraw(@Field("username") username: String,
+                 @Field("password") password: String
+    ): Observable<Response<JsonObject>>
 }
 
 object NetworkManager {
