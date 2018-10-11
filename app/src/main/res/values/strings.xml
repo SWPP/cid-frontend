@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">μBot</string>
+
+    <string name="pref_key_auto_sign_in">auto_sign_in</string>
+    <string name="pref_key_username">username</string>
+    <string name="pref_key_password">password</string>
+    <string name="pref_name_sign">sign</string>
 </resources>
