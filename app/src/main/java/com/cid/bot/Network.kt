@@ -20,7 +20,7 @@ import retrofit2.http.FormUrlEncoded
 import retrofit2.http.POST
 
 val API: ChatBotAPI = Retrofit.Builder()
-        .baseUrl("http://10.0.2.2:8000")    /* development environment */
+        .baseUrl("http://52.78.179.149")
         .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
         .addConverterFactory(GsonConverterFactory.create(
                 GsonBuilder().serializeNulls().create()
