@@ -161,6 +161,8 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        loadInfoTask?.dispose()
+        saveInfoTask?.dispose()
         changePasswordTask?.dispose()
         withdrawTask?.dispose()
         super.onDestroy()
