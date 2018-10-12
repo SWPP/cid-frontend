@@ -2,7 +2,6 @@ package com.cid.bot
 
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
@@ -18,7 +17,6 @@ class SignActivity : AppCompatActivity() {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
     private var mode = Mode.SIGN_IN
-    private lateinit var pref: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,13 +24,13 @@ class SignActivity : AppCompatActivity() {
 
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
-        NetworkManager.setAuthToken(null)
+        NetworkManager.authToken = null
 
-        pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
-        eTusername.setText(pref.getString(getString(R.string.pref_key_username), ""))
-        eTpassword.setText(pref.getString(getString(R.string.pref_key_password), ""))
-        if (pref.getBoolean(getString(R.string.pref_key_auto_sign_in), false)) {
-            trySignIn()
+        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
+            cBautoSignIn.isChecked = getBoolean(getString(R.string.pref_key_auto_sign_in), false)
+            cBsaveUsername.isChecked = getBoolean(getString(R.string.pref_key_save_username), false)
+            if (cBsaveUsername.isChecked)
+                eTusername.setText(getString(getString(R.string.pref_key_username), ""))
         }
 
         bTsignIn.setOnClickListener {
@@ -95,8 +93,18 @@ class SignActivity : AppCompatActivity() {
 
         signInTask = NetworkManager.call(API.signIn(username, password), {
             val token = it["token"].asString
-            NetworkManager.setAuthToken(token)
-
+            NetworkManager.authToken = token
+            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
+                putBoolean(getString(R.string.pref_key_auto_sign_in), cBautoSignIn.isChecked)
+                if (cBautoSignIn.isChecked) {
+                    putString(getString(R.string.pref_key_token), token)
+                }
+                putBoolean(getString(R.string.pref_key_save_username), cBsaveUsername.isChecked)
+                if (cBsaveUsername.isChecked) {
+                    putString(getString(R.string.pref_key_username), username)
+                }
+                apply()
+            }
             setResult(RESULT_OK)
             finish()
         }, {

@@ -19,7 +19,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 
 private val interceptor = object : Interceptor {
-    var authToken = ""
+    val authToken: String
+        get() = if (NetworkManager.authToken == null) "" else "Token ${NetworkManager.authToken}"
 
     override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
         val original = chain.request()
@@ -50,6 +51,9 @@ interface ChatBotAPI {
                @Field("password") password: String
     ): Observable<Response<JsonObject>>
 
+    @POST("/chatbot/auth/signout/")
+    fun signOut(): Observable<Response<JsonObject>>
+
     @FormUrlEncoded
     @POST("/chatbot/auth/withdraw/")
     fun withdraw(@Field("username") username: String,
@@ -70,9 +74,7 @@ interface ChatBotAPI {
 }
 
 object NetworkManager {
-    fun setAuthToken(token: String?) {
-        interceptor.authToken = if (token == null) "" else "Token $token"
-    }
+    var authToken: String? = null
 
     /**
      * Helper function of API methods.

@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 
 class ChatActivity : AppCompatActivity() {
     companion object {
@@ -21,7 +22,22 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun requestSignIn() {
-        startActivityForResult(Intent(this, SignActivity::class.java), REQUEST_SIGN_IN)
+        fun openSignActivity() {
+            startActivityForResult(Intent(this@ChatActivity, SignActivity::class.java), REQUEST_SIGN_IN)
+        }
+
+        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
+            if (getBoolean(getString(R.string.pref_key_auto_sign_in), false)) {
+                NetworkManager.authToken = getString(getString(R.string.pref_key_token), null)
+                NetworkManager.call(API.loadMyInfo(), {
+                    Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
+                }, {
+                    openSignActivity()
+                })
+            } else {
+                openSignActivity()
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -47,12 +63,18 @@ class ChatActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
+        when (item.itemId) {
             R.id.mIprofile -> {
                 startActivityForResult(Intent(this, ProfileActivity::class.java), REQUEST_PROFILE)
-                true
             }
-            else -> super.onOptionsItemSelected(item)
+            R.id.mIsignOut -> {
+                NetworkManager.call(API.signOut(), {}, {}, { requestSignIn() })
+            }
+            R.id.mIexit -> {
+                finish()
+            }
+            else -> return super.onOptionsItemSelected(item)
         }
+        return true
     }
 }

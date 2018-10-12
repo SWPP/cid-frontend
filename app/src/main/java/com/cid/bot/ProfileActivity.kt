@@ -73,6 +73,8 @@ class ProfileActivity : AppCompatActivity() {
 
         loadInfoTask = NetworkManager.call(API.loadMyInfo(), {
             refresh(it)
+            sCautoSignIn.isChecked = getSharedPreferences(getString(R.string.pref_name_sign), 0).getBoolean(getString(R.string.pref_key_auto_sign_in), false)
+            if (!sCautoSignIn.isChecked) sCautoSignIn.isEnabled = false
         }, {
             Toast.makeText(this, "Could not load profile temporarily. Please try later.", Toast.LENGTH_SHORT).show()
             finish()
@@ -98,8 +100,16 @@ class ProfileActivity : AppCompatActivity() {
         saveInfoTask = NetworkManager.call(API.saveMyInfo(muser), {
             Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show();
             refresh(it)
+            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
+                putBoolean(getString(R.string.pref_key_auto_sign_in), sCautoSignIn.isChecked)
+                if (sCautoSignIn.isChecked)
+                    putString(getString(R.string.pref_key_token), NetworkManager.authToken)
+                else
+                    sCautoSignIn.isEnabled = false
+                apply()
+            }
         }, {
-            Toast.makeText(this, "Please try later.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please try later.", Toast.LENGTH_SHORT).show()
         }, {
             saveInfoTask = null
         })

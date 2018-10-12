@@ -4,4 +4,10 @@
     <item
         android:id="@+id/mIprofile"
         android:title="Profile" />
+    <item
+        android:id="@+id/mIsignOut"
+        android:title="Sign Out" />
+    <item
+        android:id="@+id/mIexit"
+        android:title="Exit" />
 </menu>
