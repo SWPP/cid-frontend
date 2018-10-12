@@ -26,6 +26,7 @@ class SignActivity : AppCompatActivity() {
 
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
+        NetworkManager.setAuthToken(null)
 
         pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
         eTusername.setText(pref.getString(getString(R.string.pref_key_username), ""))
@@ -94,7 +95,7 @@ class SignActivity : AppCompatActivity() {
 
         signInTask = NetworkManager.call(API.signIn(username, password), {
             val token = it["token"].asString
-            NetworkManager.authToken = token
+            NetworkManager.setAuthToken(token)
 
             setResult(RESULT_OK)
             finish()
@@ -125,8 +126,7 @@ class SignActivity : AppCompatActivity() {
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
-            // TODO: set errors on EditTexts (Currently the backend does not response error body)
-            Toast.makeText(this, "Shit... Sorry, your username or password seems to be invalid.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if ("error" in it) it["error"] else "Please try again.", Toast.LENGTH_SHORT).show()
         }, {
             signUpTask = null
         })
