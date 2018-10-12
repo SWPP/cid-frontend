@@ -1,8 +1,15 @@
 <resources>
     <string name="app_name">μBot</string>
 
-    <string name="pref_key_auto_sign_in">auto_sign_in</string>
-    <string name="pref_key_username">username</string>
-    <string name="pref_key_password">password</string>
     <string name="pref_name_sign">sign</string>
+    <string name="pref_key_auto_sign_in">auto_sign_in</string>
+    <string name="pref_key_token">token</string>
+    <string name="pref_key_save_username">save_username</string>
+    <string name="pref_key_username">username</string>
+
+    <string-array name="genderTypes">
+        <item>Others</item>
+        <item>Male</item>
+        <item>Female</item>
+    </string-array>
 </resources>

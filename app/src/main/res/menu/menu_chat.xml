@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/mIprofile"
+        android:title="Profile" />
+    <item
+        android:id="@+id/mIsignOut"
+        android:title="Sign Out" />
+    <item
+        android:id="@+id/mIexit"
+        android:title="Exit" />
+</menu>
