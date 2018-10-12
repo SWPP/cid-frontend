@@ -16,10 +16,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
-import retrofit2.http.PATCH
-import retrofit2.http.POST
+import retrofit2.http.*
 
 private val interceptor = object : Interceptor {
     var authToken = ""
@@ -64,6 +61,12 @@ interface ChatBotAPI {
     fun changePassword(@Field("old_password") oldPassword: String,
                        @Field("new_password") newPassword: String
     ): Observable<Response<JsonObject>>
+
+    @GET("/chatbot/my-info")
+    fun loadMyInfo(): Observable<Response<Muser>>
+
+    @PATCH("/chatbot/my-info/")
+    fun saveMyInfo(@Body muser: Muser): Observable<Response<Muser>>
 }
 
 object NetworkManager {

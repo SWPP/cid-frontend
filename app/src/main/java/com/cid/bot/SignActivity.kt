@@ -119,7 +119,7 @@ class SignActivity : AppCompatActivity() {
             return
         }
 
-        NetworkManager.call(API.signUp(username, password), {
+        signUpTask = NetworkManager.call(API.signUp(username, password), {
             Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
             eTusername.setText("")
             eTpassword.setText("")

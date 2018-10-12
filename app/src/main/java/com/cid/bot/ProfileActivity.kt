@@ -12,10 +12,12 @@ import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_profile.*
 
 class ProfileActivity : AppCompatActivity() {
+    private lateinit var muser: Muser
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
+        setResult(Activity.RESULT_OK)
 
         bTchangePassword.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_change_password, null)
@@ -55,6 +57,52 @@ class ProfileActivity : AppCompatActivity() {
                     .setNegativeButton("Cancel", null)
                     .show()
         }
+
+        tryLoadInfo()
+    }
+
+    private fun refresh(muser: Muser) {
+        this.muser = muser
+        eTbirthdate.setText(muser.birthdate)
+        sPgender.setSelection(muser.gender)
+    }
+
+    private var loadInfoTask: Disposable? = null
+    private fun tryLoadInfo() {
+        if (loadInfoTask != null) return
+
+        loadInfoTask = NetworkManager.call(API.loadMyInfo(), {
+            refresh(it)
+        }, {
+            Toast.makeText(this, "Could not load profile temporarily. Please try later.", Toast.LENGTH_SHORT).show()
+            finish()
+        }, {
+            loadInfoTask = null
+        })
+    }
+
+    private var saveInfoTask: Disposable? = null
+    private fun trySaveInfo() {
+        if (saveInfoTask != null) return
+
+        val gender = sPgender.selectedItemPosition
+        val birthdate = eTbirthdate.text.toString().let {
+            if (it.isNotEmpty()) it else null
+        }
+
+        val muser = muser.copy(
+                gender = gender,
+                birthdate = birthdate
+        )
+
+        saveInfoTask = NetworkManager.call(API.saveMyInfo(muser), {
+            Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show();
+            refresh(it)
+        }, {
+            Toast.makeText(this, "Please try later.", Toast.LENGTH_SHORT).show();
+        }, {
+            saveInfoTask = null
+        })
     }
 
     private var changePasswordTask: Disposable? = null
@@ -95,7 +143,7 @@ class ProfileActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.mIsave -> {
-                // TODO: save user profile
+                trySaveInfo()
                 true
             }
             else -> super.onOptionsItemSelected(item)
