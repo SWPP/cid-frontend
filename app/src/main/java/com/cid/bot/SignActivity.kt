@@ -2,7 +2,6 @@ package com.cid.bot
 
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.content.SharedPreferences
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
@@ -18,7 +17,6 @@ class SignActivity : AppCompatActivity() {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
     private var mode = Mode.SIGN_IN
-    private lateinit var pref: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,12 +24,13 @@ class SignActivity : AppCompatActivity() {
 
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
+        NetworkManager.authToken = null
 
-        pref = getSharedPreferences(getString(R.string.pref_name_sign), 0)
-        eTusername.setText(pref.getString(getString(R.string.pref_key_username), ""))
-        eTpassword.setText(pref.getString(getString(R.string.pref_key_password), ""))
-        if (pref.getBoolean(getString(R.string.pref_key_auto_sign_in), false)) {
-            trySignIn()
+        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
+            cBautoSignIn.isChecked = getBoolean(getString(R.string.pref_key_auto_sign_in), false)
+            cBsaveUsername.isChecked = getBoolean(getString(R.string.pref_key_save_username), false)
+            if (cBsaveUsername.isChecked)
+                eTusername.setText(getString(getString(R.string.pref_key_username), ""))
         }
 
         bTsignIn.setOnClickListener {
@@ -95,7 +94,17 @@ class SignActivity : AppCompatActivity() {
         signInTask = NetworkManager.call(API.signIn(username, password), {
             val token = it["token"].asString
             NetworkManager.authToken = token
-
+            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
+                putBoolean(getString(R.string.pref_key_auto_sign_in), cBautoSignIn.isChecked)
+                if (cBautoSignIn.isChecked) {
+                    putString(getString(R.string.pref_key_token), token)
+                }
+                putBoolean(getString(R.string.pref_key_save_username), cBsaveUsername.isChecked)
+                if (cBsaveUsername.isChecked) {
+                    putString(getString(R.string.pref_key_username), username)
+                }
+                apply()
+            }
             setResult(RESULT_OK)
             finish()
         }, {
@@ -118,15 +127,14 @@ class SignActivity : AppCompatActivity() {
             return
         }
 
-        NetworkManager.call(API.signUp(username, password), {
+        signUpTask = NetworkManager.call(API.signUp(username, password), {
             Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
             eTusername.setText("")
             eTpassword.setText("")
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
-            // TODO: set errors on EditTexts (Currently the backend does not response error body)
-            Toast.makeText(this, "Shit... Sorry, your username or password seems to be invalid.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if ("error" in it) it["error"] else "Please try again.", Toast.LENGTH_SHORT).show()
         }, {
             signUpTask = null
         })
