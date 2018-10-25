@@ -2,11 +2,18 @@ package com.cid.bot
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
+import android.support.v7.widget.CardView
+import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.widget.RecyclerView
+import android.view.*
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
+import io.reactivex.disposables.Disposable
+import kotlinx.android.synthetic.main.activity_chat.*
 
 class ChatActivity : AppCompatActivity() {
     companion object {
@@ -18,7 +25,53 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
+        rVmessages.layoutManager = LinearLayoutManager(applicationContext)
+        rVmessages.adapter = MessageAdapter(listOf())
+
+        bTsend.setOnClickListener { trySendMessage() }
+        eTtext.setOnKeyListener { v, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                trySendMessage()
+                true
+            } else false
+        }
+
         requestSignIn()
+    }
+
+    private var loadAllMessagesTask: Disposable? = null
+    private fun tryLoadAllMessages() {
+        if (loadAllMessagesTask != null) return
+
+        loadAllMessagesTask = NetworkManager.call(API.loadAllMessages(), {
+            (rVmessages.adapter as MessageAdapter).messages = it
+        }, {
+            Toast.makeText(this, "Could not load message list, please try later.", Toast.LENGTH_LONG).show()
+        }, {
+            loadAllMessagesTask = null
+        })
+    }
+
+    private var sendMessageTask: Disposable? = null
+    private fun trySendMessage() {
+        if (sendMessageTask != null) return
+
+        val text = eTtext.text.toString()
+        if (text.isEmpty()) return
+        val selectionStart = eTtext.selectionStart
+        val selectionEnd = eTtext.selectionEnd
+        eTtext.setText("")
+
+        sendMessageTask = NetworkManager.call(API.sendMessage(text), {
+            // TODO: add received message and wait push notice
+            tryLoadAllMessages()
+        }, {
+            Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
+            eTtext.setText(text)
+            eTtext.setSelection(selectionStart, selectionEnd)
+        }, {
+            sendMessageTask = null
+        })
     }
 
     private fun requestSignIn() {
@@ -31,6 +84,7 @@ class ChatActivity : AppCompatActivity() {
                 NetworkManager.authToken = getString(getString(R.string.pref_key_token), null)
                 NetworkManager.call(API.loadMyInfo(), {
                     Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
+                    tryLoadAllMessages()
                 }, {
                     openSignActivity()
                 })
@@ -45,7 +99,7 @@ class ChatActivity : AppCompatActivity() {
             REQUEST_SIGN_IN -> {
                 when (resultCode) {
                     RESULT_CANCELED -> finish()
-                    RESULT_OK -> {} // TODO
+                    RESULT_OK -> tryLoadAllMessages()
                 }
             }
             REQUEST_PROFILE -> {
@@ -76,5 +130,43 @@ class ChatActivity : AppCompatActivity() {
             else -> return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    class MessageAdapter(messages: List<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+        var messages = messages
+            set(value) {
+                field = value
+                notifyDataSetChanged()
+            }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_message, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun getItemCount() = messages.size
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val m = messages[position]
+            with (holder) {
+                tVtext.text = m.text
+                if (m.receiver == "muBot") {
+                    cVmessage.layoutParams = (cVmessage.layoutParams as LinearLayout.LayoutParams).apply {
+                        gravity = Gravity.END
+                    }
+                    cVmessage.setCardBackgroundColor(Color.rgb( 255, 255, 150))
+                } else {
+                    cVmessage.layoutParams = (cVmessage.layoutParams as LinearLayout.LayoutParams).apply {
+                        gravity = Gravity.START
+                    }
+                    cVmessage.setCardBackgroundColor(Color.WHITE)
+                }
+            }
+        }
+
+        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val tVtext = view.findViewById<TextView>(R.id.tVtext)
+            val cVmessage = view.findViewById<CardView>(R.id.cVmessage)
+        }
     }
 }
