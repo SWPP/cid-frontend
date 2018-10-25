@@ -39,12 +39,17 @@ class ChatActivity : AppCompatActivity() {
         requestSignIn()
     }
 
+    private fun refresh(messages: List<Message>) {
+        (rVmessages.adapter as MessageAdapter).messages = messages.sortedBy(Message::created)
+        rVmessages.scrollToPosition(messages.size - 1)
+    }
+
     private var loadAllMessagesTask: Disposable? = null
     private fun tryLoadAllMessages() {
         if (loadAllMessagesTask != null) return
 
         loadAllMessagesTask = NetworkManager.call(API.loadAllMessages(), {
-            (rVmessages.adapter as MessageAdapter).messages = it
+            refresh(it)
         }, {
             Toast.makeText(this, "Could not load message list, please try later.", Toast.LENGTH_LONG).show()
         }, {
@@ -65,6 +70,7 @@ class ChatActivity : AppCompatActivity() {
         sendMessageTask = NetworkManager.call(API.sendMessage(text), {
             // TODO: add received message and wait push notice
             tryLoadAllMessages()
+            eTtext.postDelayed({ tryLoadAllMessages() }, 3000)
         }, {
             Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
             eTtext.setText(text)
@@ -150,7 +156,7 @@ class ChatActivity : AppCompatActivity() {
             val m = messages[position]
             with (holder) {
                 tVtext.text = m.text
-                if (m.receiver == "muBot") {
+                if (m.receiver == null) {
                     cVmessage.layoutParams = (cVmessage.layoutParams as LinearLayout.LayoutParams).apply {
                         gravity = Gravity.END
                     }

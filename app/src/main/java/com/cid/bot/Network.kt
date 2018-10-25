@@ -72,7 +72,7 @@ interface ChatBotAPI {
     @PATCH("/chatbot/my-info/")
     fun saveMyInfo(@Body muser: Muser): Observable<Response<Muser>>
 
-    @GET("/chatbot/messages/")
+    @GET("/chatbot/chat/")
     fun loadAllMessages(): Observable<Response<List<Message>>>
 
     @FormUrlEncoded
