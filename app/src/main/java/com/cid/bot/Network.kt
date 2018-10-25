@@ -75,6 +75,7 @@ interface ChatBotAPI {
     @GET("/chatbot/messages/")
     fun loadAllMessages(): Observable<Response<List<Message>>>
 
+    @FormUrlEncoded
     @POST("/chatbot/chat/")
     fun sendMessage(@Field("text") text: String): Observable<Response<Message>>
 }

@@ -28,6 +28,14 @@ class ChatActivity : AppCompatActivity() {
         rVmessages.layoutManager = LinearLayoutManager(applicationContext)
         rVmessages.adapter = MessageAdapter(listOf())
 
+        bTsend.setOnClickListener { trySendMessage() }
+        eTtext.setOnKeyListener { v, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                trySendMessage()
+                true
+            } else false
+        }
+
         requestSignIn()
     }
 
@@ -38,9 +46,31 @@ class ChatActivity : AppCompatActivity() {
         loadAllMessagesTask = NetworkManager.call(API.loadAllMessages(), {
             (rVmessages.adapter as MessageAdapter).messages = it
         }, {
-            Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Could not load message list, please try later.", Toast.LENGTH_LONG).show()
         }, {
             loadAllMessagesTask = null
+        })
+    }
+
+    private var sendMessageTask: Disposable? = null
+    private fun trySendMessage() {
+        if (sendMessageTask != null) return
+
+        val text = eTtext.text.toString()
+        if (text.isEmpty()) return
+        val selectionStart = eTtext.selectionStart
+        val selectionEnd = eTtext.selectionEnd
+        eTtext.setText("")
+
+        sendMessageTask = NetworkManager.call(API.sendMessage(text), {
+            // TODO: add received message and wait push notice
+            tryLoadAllMessages()
+        }, {
+            Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
+            eTtext.setText(text)
+            eTtext.setSelection(selectionStart, selectionEnd)
+        }, {
+            sendMessageTask = null
         })
     }
 
@@ -69,7 +99,7 @@ class ChatActivity : AppCompatActivity() {
             REQUEST_SIGN_IN -> {
                 when (resultCode) {
                     RESULT_CANCELED -> finish()
-                    RESULT_OK -> {} // TODO
+                    RESULT_OK -> tryLoadAllMessages()
                 }
             }
             REQUEST_PROFILE -> {
