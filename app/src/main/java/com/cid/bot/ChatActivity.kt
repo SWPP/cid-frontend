@@ -12,6 +12,7 @@ import android.view.*
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_chat.*
 
 class ChatActivity : AppCompatActivity() {
@@ -24,38 +25,23 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
-        // TODO: replace this message list to the real fetched list
-        val messages = listOf(
-                Message("muBot", "user", "111"),
-                Message("muBot", "user","222"),
-                Message("user", "muBot", "333"),
-                Message("muBot", "user","test cases all right"),
-                Message("user", "muBot", "Hello?"),
-                Message("muBot", "user", "111"),
-                Message("muBot", "user","222"),
-                Message("user", "muBot", "333"),
-                Message("muBot", "user","test cases all right"),
-                Message("user", "muBot", "Hello?"),
-                Message("muBot", "user", "111"),
-                Message("muBot", "user","222"),
-                Message("user", "muBot", "333"),
-                Message("muBot", "user","test cases all right"),
-                Message("user", "muBot", "Hello?"),
-                Message("muBot", "user", "111"),
-                Message("muBot", "user","222"),
-                Message("user", "muBot", "333"),
-                Message("muBot", "user","test cases all right"),
-                Message("user", "muBot", "Hello?"),
-                Message("muBot", "user", "111"),
-                Message("muBot", "user","222"),
-                Message("user", "muBot", "333"),
-                Message("muBot", "user","test cases all right"),
-                Message("user", "muBot", "Hello?")
-        )
         rVmessages.layoutManager = LinearLayoutManager(applicationContext)
-        rVmessages.adapter = MessageAdapter(messages)
+        rVmessages.adapter = MessageAdapter(listOf())
 
         requestSignIn()
+    }
+
+    private var loadAllMessagesTask: Disposable? = null
+    private fun tryLoadAllMessages() {
+        if (loadAllMessagesTask != null) return
+
+        loadAllMessagesTask = NetworkManager.call(API.loadAllMessages(), {
+            (rVmessages.adapter as MessageAdapter).messages = it
+        }, {
+            Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
+        }, {
+            loadAllMessagesTask = null
+        })
     }
 
     private fun requestSignIn() {
@@ -68,6 +54,7 @@ class ChatActivity : AppCompatActivity() {
                 NetworkManager.authToken = getString(getString(R.string.pref_key_token), null)
                 NetworkManager.call(API.loadMyInfo(), {
                     Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
+                    tryLoadAllMessages()
                 }, {
                     openSignActivity()
                 })
@@ -115,7 +102,13 @@ class ChatActivity : AppCompatActivity() {
         return true
     }
 
-    class MessageAdapter(val messages: List<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+    class MessageAdapter(messages: List<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+        var messages = messages
+            set(value) {
+                field = value
+                notifyDataSetChanged()
+            }
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.item_message, parent, false)
             return ViewHolder(view)
