@@ -19,30 +19,27 @@ class MessagingService : FirebaseMessagingService() {
         const val ACTION_MESSAGE_RECEIVED = "ACTION_MESSAGE_RECEIVED"
     }
 
-    override fun onNewToken(token: String?) {
-        super.onNewToken(token)
-    }
-
     override fun onMessageReceived(m: RemoteMessage) {
         super.onMessageReceived(m)
 
         if (isAppBackground(this)) {
             notify(m.data)
         } else {
-            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_MESSAGE_RECEIVED).apply {
-                putExtra("message", m.data.toString())
-            })
+            val id = m.data["message_id"]?.toIntOrNull()
+            if (id != null) {
+                LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_MESSAGE_RECEIVED).apply {
+                    putExtra("message_id", id)
+                })
+            }
         }
     }
 
     private fun notify(data: Map<String, String>) {
-        val title = data["title"]
-        val body = data["body"]
-        if (title == null || body == null) return
+        val text = data["text"] ?: return
 
         val intent = Intent(this, ChatActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("Notification", body)
+            putExtra("Notification", data["message_id"])
         }
 
         val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_ONE_SHOT)
@@ -50,8 +47,8 @@ class MessagingService : FirebaseMessagingService() {
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher_foreground) // TODO: replace to larger icon image
-                .setContentTitle(title)
-                .setContentText(body)
+                .setContentTitle("μBot")
+                .setContentText(text)
                 .setAutoCancel(true)
                 .setSound(sound)
                 .setContentIntent(pendingIntent)

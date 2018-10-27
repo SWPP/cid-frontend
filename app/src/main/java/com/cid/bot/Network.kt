@@ -48,7 +48,8 @@ interface ChatBotAPI {
     @FormUrlEncoded
     @POST("/chatbot/auth/signin/")
     fun signIn(@Field("username") username: String,
-               @Field("password") password: String
+               @Field("password") password: String,
+               @Field("push_token") pushToken: String
     ): Observable<Response<JsonObject>>
 
     @POST("/chatbot/auth/signout/")
@@ -74,6 +75,9 @@ interface ChatBotAPI {
 
     @GET("/chatbot/chat/")
     fun loadAllMessages(): Observable<Response<List<Message>>>
+
+    @GET("/chatbot/chat/{id}/")
+    fun loadMessage(@Path("id") id: Int): Observable<Response<Message>>
 
     @FormUrlEncoded
     @POST("/chatbot/chat/")

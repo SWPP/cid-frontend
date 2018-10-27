@@ -23,9 +23,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private val messagingReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            // TODO: get message from intent and update
-            tryLoadAllMessages()
+        override fun onReceive(context: Context?, intent: Intent) {
+            val messageId = intent.getIntExtra("message_id", -1)
+            tryLoadMessage(messageId)
         }
     }
 
@@ -34,7 +34,7 @@ class ChatActivity : AppCompatActivity() {
         setContentView(R.layout.activity_chat)
 
         rVmessages.layoutManager = LinearLayoutManager(applicationContext)
-        rVmessages.adapter = MessageAdapter(listOf())
+        rVmessages.adapter = MessageAdapter(mutableListOf())
 
         bTsend.setOnClickListener { trySendMessage() }
         eTtext.setOnKeyListener { v, keyCode, event ->
@@ -45,16 +45,17 @@ class ChatActivity : AppCompatActivity() {
         }
 
         requestSignIn()
-
-/*
-        FirebaseInstanceId.getInstance().instanceId.addOnSuccessListener { Log.e("instanceId", "${it.id} ${it.token}") }
-        Log.e("id", FirebaseInstanceId.getInstance().id)
-*/
     }
 
     private fun refresh(messages: List<Message>) {
-        (rVmessages.adapter as MessageAdapter).messages = messages.sortedBy(Message::created)
+        (rVmessages.adapter as MessageAdapter).messages = messages.sortedBy(Message::created).toMutableList()
         rVmessages.scrollToPosition(messages.size - 1)
+    }
+
+    private fun addMessage(message: Message) {
+        val adapter = rVmessages.adapter as MessageAdapter
+        adapter.addMessage(message)
+        rVmessages.scrollToPosition(adapter.itemCount - 1)
     }
 
     private var loadAllMessagesTask: Disposable? = null
@@ -70,6 +71,19 @@ class ChatActivity : AppCompatActivity() {
         })
     }
 
+    private var loadMessageTaskMap = mutableMapOf<Int, Disposable>()
+    private fun tryLoadMessage(id: Int) {
+        if (loadMessageTaskMap[id] != null) return
+
+        loadMessageTaskMap[id] = NetworkManager.call(API.loadMessage(id), {
+            addMessage(it)
+        }, {
+            Toast.makeText(this, "Could not load a message, please check your network status.", Toast.LENGTH_LONG).show()
+        }, {
+            loadMessageTaskMap.remove(id)
+        })
+    }
+
     private var sendMessageTask: Disposable? = null
     private fun trySendMessage() {
         if (sendMessageTask != null) return
@@ -81,8 +95,7 @@ class ChatActivity : AppCompatActivity() {
         eTtext.setText("")
 
         sendMessageTask = NetworkManager.call(API.sendMessage(text), {
-            // TODO: add only received message and wait push notice
-            tryLoadAllMessages()
+            addMessage(it)
         }, {
             Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
             eTtext.setText(text)
@@ -150,12 +163,18 @@ class ChatActivity : AppCompatActivity() {
         return true
     }
 
-    class MessageAdapter(messages: List<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+    class MessageAdapter(messages: MutableList<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
         var messages = messages
             set(value) {
                 field = value
                 notifyDataSetChanged()
             }
+
+        fun addMessage(message: Message) {
+            messages.add(message)
+            messages.sortBy(Message::created)
+            notifyItemInserted(messages.indexOf(message))
+        }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.item_message, parent, false)
@@ -196,5 +215,12 @@ class ChatActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(messagingReceiver)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        loadAllMessagesTask?.dispose()
+        loadMessageTaskMap.values.forEach { it.dispose() }
+        sendMessageTask?.dispose()
     }
 }
