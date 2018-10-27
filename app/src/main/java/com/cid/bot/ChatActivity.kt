@@ -1,10 +1,11 @@
 package com.cid.bot
 
 import android.app.Activity
-import android.content.Intent
+import android.content.*
 import android.graphics.Color
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.widget.CardView
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
@@ -19,6 +20,13 @@ class ChatActivity : AppCompatActivity() {
     companion object {
         const val REQUEST_SIGN_IN = 101
         const val REQUEST_PROFILE = 102
+    }
+
+    private val messagingReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // TODO: get message from intent and update
+            tryLoadAllMessages()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +45,11 @@ class ChatActivity : AppCompatActivity() {
         }
 
         requestSignIn()
+
+/*
+        FirebaseInstanceId.getInstance().instanceId.addOnSuccessListener { Log.e("instanceId", "${it.id} ${it.token}") }
+        Log.e("id", FirebaseInstanceId.getInstance().id)
+*/
     }
 
     private fun refresh(messages: List<Message>) {
@@ -68,9 +81,8 @@ class ChatActivity : AppCompatActivity() {
         eTtext.setText("")
 
         sendMessageTask = NetworkManager.call(API.sendMessage(text), {
-            // TODO: add received message and wait push notice
+            // TODO: add only received message and wait push notice
             tryLoadAllMessages()
-            eTtext.postDelayed({ tryLoadAllMessages() }, 3000)
         }, {
             Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
             eTtext.setText(text)
@@ -174,5 +186,15 @@ class ChatActivity : AppCompatActivity() {
             val tVtext = view.findViewById<TextView>(R.id.tVtext)
             val cVmessage = view.findViewById<CardView>(R.id.cVmessage)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        LocalBroadcastManager.getInstance(this).registerReceiver(messagingReceiver, IntentFilter(MessagingService.ACTION_MESSAGE_RECEIVED))
+    }
+
+    override fun onPause() {
+        super.onPause()
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(messagingReceiver)
     }
 }
