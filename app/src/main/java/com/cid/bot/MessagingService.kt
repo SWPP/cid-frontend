@@ -46,7 +46,7 @@ class MessagingService : FirebaseMessagingService() {
         val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher_foreground) // TODO: replace to larger icon image
+                .setSmallIcon(R.mipmap.ic_simple)
                 .setContentTitle("μBot")
                 .setContentText(text)
                 .setAutoCancel(true)
