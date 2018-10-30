@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.support.constraint.ConstraintLayout
 import android.widget.LinearLayout
 import android.widget.Toast
+import com.google.firebase.iid.FirebaseInstanceId
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_sign.*
 import kotlin.math.abs
@@ -17,6 +18,7 @@ class SignActivity : AppCompatActivity() {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
     private var mode = Mode.SIGN_IN
+    private var pushToken: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +48,8 @@ class SignActivity : AppCompatActivity() {
             else
                 changeMode(Mode.SIGN_UP)
         }
+
+        getPushToken()
     }
 
     private var modeAnim: ValueAnimator? = null
@@ -88,10 +92,16 @@ class SignActivity : AppCompatActivity() {
     private fun trySignIn() {
         if (signInTask != null) return
 
+        val pushToken = pushToken
+        if (pushToken == null) {
+            Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        signInTask = NetworkManager.call(API.signIn(username, password), {
+        signInTask = NetworkManager.call(API.signIn(username, password, pushToken), {
             val token = it["token"].asString
             NetworkManager.authToken = token
             with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
@@ -138,6 +148,14 @@ class SignActivity : AppCompatActivity() {
         }, {
             signUpTask = null
         })
+    }
+
+    private fun getPushToken() {
+        FirebaseInstanceId.getInstance().instanceId.addOnSuccessListener {
+            pushToken = it.token
+            if (pushToken == null)
+                getPushToken()
+        }
     }
 
     override fun onBackPressed() {
