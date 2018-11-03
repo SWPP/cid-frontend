@@ -171,6 +171,9 @@ class ChatActivity : AppCompatActivity() {
             }
 
         fun addMessage(message: Message) {
+            val id = message.id
+            if (id != null && messages.find { it.id == id } != null) return
+
             messages.add(message)
             messages.sortBy(Message::created)
             notifyItemInserted(messages.indexOf(message))
