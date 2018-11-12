@@ -1,6 +1,7 @@
 package com.cid.bot
 
 import android.app.Activity
+import android.databinding.DataBindingUtil
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
@@ -8,15 +9,19 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
 import android.widget.Toast
+import com.cid.bot.databinding.ActivityProfileBinding
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_profile.*
 
 class ProfileActivity : AppCompatActivity() {
+    lateinit var binding: ActivityProfileBinding
+
     private lateinit var muser: Muser
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_profile)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
+
         setResult(Activity.RESULT_OK)
 
         bTchangePassword.setOnClickListener {
