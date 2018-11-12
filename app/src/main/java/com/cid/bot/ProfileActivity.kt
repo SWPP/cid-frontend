@@ -10,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
 import android.widget.Toast
+import com.cid.bot.data.Muser
 import com.cid.bot.databinding.ActivityProfileBinding
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_profile.*

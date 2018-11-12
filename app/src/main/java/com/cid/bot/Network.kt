@@ -1,6 +1,8 @@
 package com.cid.bot
 
 import android.text.TextUtils
+import com.cid.bot.data.Message
+import com.cid.bot.data.Muser
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import io.reactivex.Observable

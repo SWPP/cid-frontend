@@ -12,6 +12,7 @@ import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.view.*
 import android.widget.Toast
+import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
 import io.reactivex.disposables.Disposable

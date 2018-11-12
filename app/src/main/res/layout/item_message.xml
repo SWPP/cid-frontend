@@ -6,7 +6,7 @@
         <import type="android.graphics.Color"/>
         <variable
             name="message"
-            type="com.cid.bot.Message"/>
+            type="com.cid.bot.data.Message"/>
     </data>
     <LinearLayout
         android:layout_width="match_parent"

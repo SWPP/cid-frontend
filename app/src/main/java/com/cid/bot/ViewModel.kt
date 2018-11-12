@@ -3,10 +3,14 @@ package com.cid.bot
 import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.ViewModel
 import android.databinding.ObservableField
+import com.cid.bot.data.Message
+import com.cid.bot.data.MessageRepository
+import com.cid.bot.data.Muser
+import com.cid.bot.data.MuserRepository
 
 class ProfileViewModel : ViewModel() {
-    val repo = Repository()
-    val text = ObservableField<String>()
+    val repo = MuserRepository()
+    val muser = ObservableField<Muser>()
     val isLoading = ObservableField<Boolean>()
 
     init {
@@ -15,17 +19,15 @@ class ProfileViewModel : ViewModel() {
 
     fun refresh() {
         isLoading.set(true)
-        repo.refreshData(object : OnDataReadyCallback {
-            override fun onDataReady(data: String) {
-                isLoading.set(false)
-                text.set(data)
-            }
-        })
+        repo.getMuser {
+            isLoading.set(false)
+            muser.set(it)
+        }
     }
 }
 
 class ChatViewModel : ViewModel() {
-    val repo = Repository()
+    val repo = MessageRepository()
     val messages = MutableLiveData<List<Message>>()
     val isLoading = ObservableField<Boolean>()
 
@@ -35,11 +37,9 @@ class ChatViewModel : ViewModel() {
 
     fun loadMessages() {
         isLoading.set(true)
-        repo.getMessages(object : OnMessageReadyCallback {
-            override fun onMessageReady(data: List<Message>) {
-                isLoading.set(false)
-                messages.value = data
-            }
-        })
+        repo.getMessages {
+            isLoading.set(false)
+            messages.value = it
+        }
     }
 }
