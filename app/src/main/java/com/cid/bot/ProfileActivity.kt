@@ -21,6 +21,9 @@ class ProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
+        val muser = Muser(1, "USER", 1, "2000-01-01")
+        binding.muser = muser
+        binding.executePendingBindings()
 
         setResult(Activity.RESULT_OK)
 
@@ -63,7 +66,7 @@ class ProfileActivity : AppCompatActivity() {
                     .show()
         }
 
-        tryLoadInfo()
+//        tryLoadInfo()
     }
 
     private fun refresh(muser: Muser) {
