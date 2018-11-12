@@ -22,6 +22,28 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    flavorDimensions "default"
+
+    productFlavors {
+        finalProduction {
+            dimension "default"
+            applicationId "com.cid.bot"
+            resValue "string", "app_name", "μBot"
+        }
+
+        demoProduction {
+            dimension "default"
+            applicationId "com.cid.bot.demo"
+            resValue "string", "app_name", "μBot Demo P"
+        }
+
+        demoTesting {
+            dimension "default"
+            applicationId "com.cid.bot.demotesting"
+            resValue "string", "app_name", "μBot Demo T"
+        }
+    }
 }
 
 dependencies {
