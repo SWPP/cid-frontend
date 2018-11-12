@@ -1,5 +1,7 @@
 package com.cid.bot
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.text.TextUtils
 import com.cid.bot.data.Message
 import com.cid.bot.data.Muser
@@ -136,4 +138,13 @@ object NetworkManager {
                     error.message?.let { onError(mapOf("exception" to it)) }
                 })
     }
+}
+
+class NetManager(private val context: Context) {
+    val isConnectedToInternet: Boolean?
+        get() {
+            val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val ni = conManager.activeNetworkInfo
+            return ni != null && ni.isConnected
+        }
 }

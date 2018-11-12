@@ -58,9 +58,6 @@ class ChatActivity : AppCompatActivity() {
         }
 
         requestSignIn()
-
-        /* For Test */
-        startActivityForResult(Intent(this, ProfileActivity::class.java), REQUEST_PROFILE)
     }
 
     private fun refresh(messages: List<Message>) {

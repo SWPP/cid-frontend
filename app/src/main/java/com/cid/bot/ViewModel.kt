@@ -1,5 +1,7 @@
 package com.cid.bot
 
+import android.app.Application
+import android.arch.lifecycle.AndroidViewModel
 import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.ViewModel
 import android.databinding.ObservableField
@@ -26,8 +28,8 @@ class ProfileViewModel : ViewModel() {
     }
 }
 
-class ChatViewModel : ViewModel() {
-    val repo = MessageRepository()
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
+    val repo = MessageRepository(NetManager(application))
     val messages = MutableLiveData<List<Message>>()
     val isLoading = ObservableField<Boolean>()
 
