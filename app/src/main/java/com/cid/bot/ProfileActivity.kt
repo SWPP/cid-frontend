@@ -1,6 +1,7 @@
 package com.cid.bot
 
 import android.app.Activity
+import android.arch.lifecycle.ViewModelProviders
 import android.databinding.DataBindingUtil
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -21,8 +22,7 @@ class ProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
-        val muser = Muser(1, "USER", 1, "2000-01-01")
-        binding.muser = muser
+        binding.viewModel = ViewModelProviders.of(this).get(ProfileViewModel::class.java)
         binding.executePendingBindings()
 
         setResult(Activity.RESULT_OK)
