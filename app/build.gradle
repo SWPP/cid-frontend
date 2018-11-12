@@ -44,6 +44,8 @@ android {
             resValue "string", "app_name", "μBot Demo T"
         }
     }
+
+    dataBinding.enabled = true
 }
 
 dependencies {
@@ -65,4 +67,7 @@ dependencies {
 
     /* firebase */
     implementation 'com.google.firebase:firebase-messaging:17.3.4'
+
+    /* databinding */
+    implementation "com.android.databinding:compiler:3.2.0-alpha10"
 }
