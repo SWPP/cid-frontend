@@ -47,10 +47,11 @@ class DaggerAwareViewModelFactory @Inject constructor(private val creators: @Jvm
     }
 }
 
-class ProfileViewModel : ViewModel() {
-    private val repo = MuserRepository()
+class ProfileViewModel @Inject constructor(private val repo: MuserRepository) : ViewModel() {
     val muser = ObservableField<Muser>()
     val isLoading = ObservableField<Boolean>()
+
+    private val compositeDisposable = CompositeDisposable()
 
     init {
         refresh()
@@ -58,10 +59,29 @@ class ProfileViewModel : ViewModel() {
 
     fun refresh() {
         isLoading.set(true)
-        repo.getMuser {
-            isLoading.set(false)
-            muser.set(it)
-        }
+        compositeDisposable += repo
+                .getMuser()
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object : DisposableObserver<Muser>() {
+                    override fun onNext(t: Muser) {
+                        muser.set(t)
+                    }
+
+                    override fun onError(e: Throwable) {
+                        // TODO
+                    }
+
+                    override fun onComplete() {
+                        isLoading.set(false)
+                    }
+                })
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (!compositeDisposable.isDisposed)
+            compositeDisposable.dispose()
     }
 }
 
@@ -82,18 +102,18 @@ class ChatViewModel @Inject constructor(private val repo: MessageRepository) : V
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(object : DisposableObserver<List<Message>>() {
-            override fun onNext(t: List<Message>) {
-                messages.value = t
-            }
+                    override fun onNext(t: List<Message>) {
+                        messages.value = t
+                    }
 
-            override fun onError(e: Throwable) {
-                // TODO
-            }
+                    override fun onError(e: Throwable) {
+                        // TODO
+                    }
 
-            override fun onComplete() {
-                isLoading.set(false)
-            }
-        })
+                    override fun onComplete() {
+                        isLoading.set(false)
+                    }
+                })
     }
 
     override fun onCleared() {

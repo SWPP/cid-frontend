@@ -1,9 +1,9 @@
 package com.cid.bot
 
 import android.app.Activity
+import android.arch.lifecycle.ViewModelProvider
 import android.arch.lifecycle.ViewModelProviders
 import android.databinding.DataBindingUtil
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
 import android.view.Menu
@@ -12,18 +12,24 @@ import android.widget.EditText
 import android.widget.Toast
 import com.cid.bot.data.Muser
 import com.cid.bot.databinding.ActivityProfileBinding
+import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_profile.*
+import javax.inject.Inject
 
-class ProfileActivity : AppCompatActivity() {
-    lateinit var binding: ActivityProfileBinding
+class ProfileActivity : DaggerAppCompatActivity() {
+    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    private lateinit var binding: ActivityProfileBinding
 
     private lateinit var muser: Muser
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
-        binding.viewModel = ViewModelProviders.of(this).get(ProfileViewModel::class.java)
+        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ProfileViewModel::class.java)
+        binding.viewModel = viewModel
+
         binding.executePendingBindings()
 
         setResult(Activity.RESULT_OK)

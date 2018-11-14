@@ -45,12 +45,24 @@ internal abstract class ChatActivityModule {
     abstract fun bindChatViewModel(viewModel: ChatViewModel): ViewModel
 }
 
+@Module
+internal abstract class ProfileActivityModule {
+    @ContributesAndroidInjector()
+    internal abstract fun profileActivity(): ProfileActivity
+
+    @Binds
+    @IntoMap
+    @ViewModelKey(ProfileViewModel::class)
+    abstract fun bindProfileViewModel(viewModel: ProfileViewModel): ViewModel
+}
+
 @Singleton
 @Component(modules=[
     AndroidSupportInjectionModule::class,
     AppModule::class,
     ViewModelBuilder::class,
-    ChatActivityModule::class
+    ChatActivityModule::class,
+    ProfileActivityModule::class
 ])
 interface AppComponent : AndroidInjector<AppApplication> {
     @Component.Builder
