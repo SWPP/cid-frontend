@@ -21,6 +21,8 @@ import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private val interceptor = object : Interceptor {
     val authToken: String
@@ -140,7 +142,8 @@ object NetworkManager {
     }
 }
 
-class NetManager(private val context: Context) {
+@Singleton
+class NetManager @Inject constructor(private val context: Context) {
     val isConnectedToInternet: Boolean?
         get() {
             val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

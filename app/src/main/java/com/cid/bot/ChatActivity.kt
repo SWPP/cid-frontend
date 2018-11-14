@@ -2,10 +2,10 @@ package com.cid.bot
 
 import android.app.Activity
 import android.arch.lifecycle.Observer
+import android.arch.lifecycle.ViewModelProvider
 import android.arch.lifecycle.ViewModelProviders
 import android.content.*
 import android.databinding.DataBindingUtil
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.widget.LinearLayoutManager
@@ -15,15 +15,18 @@ import android.widget.Toast
 import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
+import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_chat.*
+import javax.inject.Inject
 
-class ChatActivity : AppCompatActivity() {
+class ChatActivity : DaggerAppCompatActivity() {
     companion object {
         const val REQUEST_SIGN_IN = 101
         const val REQUEST_PROFILE = 102
     }
 
+    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
     private lateinit var binding: ActivityChatBinding
     private val messageAdapter = MessageAdapter(mutableListOf())
 
@@ -36,9 +39,11 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_chat)
-        val viewModel = ViewModelProviders.of(this).get(ChatViewModel::class.java)
+        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ChatViewModel::class.java)
         binding.viewModel = viewModel
+
         with (binding) {
             executePendingBindings()
 

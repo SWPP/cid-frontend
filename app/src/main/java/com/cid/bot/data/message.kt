@@ -5,10 +5,11 @@ import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.Single
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 data class Message(val id: Int?, val sender: String?, val receiver: String?, val text: String, val created: String? = null)
 
-class MessageRepository(private val netManager: NetManager) {
+class MessageRepository @Inject constructor(private val netManager: NetManager) {
     private val localSource = MessageLocalSource()
     private val remoteSource = MessageRemoteSource()
 
