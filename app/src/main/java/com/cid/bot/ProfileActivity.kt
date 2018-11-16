@@ -10,7 +10,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
 import android.widget.Toast
-import com.cid.bot.data.Muser
 import com.cid.bot.databinding.ActivityProfileBinding
 import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.disposables.Disposable
@@ -21,19 +20,19 @@ class ProfileActivity : DaggerAppCompatActivity() {
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
     private lateinit var binding: ActivityProfileBinding
 
-    private lateinit var muser: Muser
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        /* Binding */
         binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
         val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ProfileViewModel::class.java)
         binding.viewModel = viewModel
-
         binding.executePendingBindings()
 
+        /* Set Result for finish */
         setResult(Activity.RESULT_OK)
 
+        /* Listeners */
         bTchangePassword.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_change_password, null)
 
@@ -56,7 +55,6 @@ class ProfileActivity : DaggerAppCompatActivity() {
                 }
             }
         }
-
         bTwithdraw.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_withdraw, null)
 
@@ -73,61 +71,33 @@ class ProfileActivity : DaggerAppCompatActivity() {
                     .show()
         }
 
-//        tryLoadInfo()
+        tryLoadInfo()
     }
 
-    private fun refresh(muser: Muser) {
-        this.muser = muser
-        eTbirthdate.setText(muser.birthdate)
-        sPgender.setSelection(muser.gender)
-    }
-
-    private var loadInfoTask: Disposable? = null
     private fun tryLoadInfo() {
-        if (loadInfoTask != null) return
-
-        loadInfoTask = NetworkManager.call(API.loadMyInfo(), {
-            refresh(it)
-            sCautoSignIn.isChecked = getSharedPreferences(getString(R.string.pref_name_sign), 0).getBoolean(getString(R.string.pref_key_auto_sign_in), false)
-            if (!sCautoSignIn.isChecked) sCautoSignIn.isEnabled = false
-        }, {
+        binding.viewModel?.loadMuser(HObserver({
             Toast.makeText(this, "Could not load profile temporarily. Please try later.", Toast.LENGTH_SHORT).show()
             finish()
-        }, {
-            loadInfoTask = null
-        })
+        }))
     }
 
-    private var saveInfoTask: Disposable? = null
     private fun trySaveInfo() {
-        if (saveInfoTask != null) return
-
         val gender = sPgender.selectedItemPosition
         val birthdate = eTbirthdate.text.toString().let {
             if (it.isNotEmpty()) it else null
         }
 
-        val muser = muser.copy(
+        val muser = binding.viewModel?.muser?.get()?.copy(
                 gender = gender,
-                birthdate = birthdate
-        )
+                birthdate = birthdate,
+                autoSignIn = sCautoSignIn.isChecked
+        ) ?: return
 
-        saveInfoTask = NetworkManager.call(API.saveMyInfo(muser), {
-            Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show();
-            refresh(it)
-            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
-                putBoolean(getString(R.string.pref_key_auto_sign_in), sCautoSignIn.isChecked)
-                if (sCautoSignIn.isChecked)
-                    putString(getString(R.string.pref_key_token), NetworkManager.authToken)
-                else
-                    sCautoSignIn.isEnabled = false
-                apply()
-            }
-        }, {
-            Toast.makeText(this, "Please try later.", Toast.LENGTH_SHORT).show()
-        }, {
-            saveInfoTask = null
-        })
+        binding.viewModel?.saveMuser(muser, HObserver(onError = {
+            Toast.makeText(this, it.zip(), Toast.LENGTH_LONG).show()
+        }, onSuccess = {
+            Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
+        }))
     }
 
     private var changePasswordTask: Disposable? = null
@@ -176,8 +146,6 @@ class ProfileActivity : DaggerAppCompatActivity() {
     }
 
     override fun onDestroy() {
-        loadInfoTask?.dispose()
-        saveInfoTask?.dispose()
         changePasswordTask?.dispose()
         withdrawTask?.dispose()
         super.onDestroy()
