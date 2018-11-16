@@ -11,12 +11,10 @@ import android.view.MenuItem
 import android.widget.EditText
 import android.widget.Toast
 import com.cid.bot.databinding.ActivityProfileBinding
-import dagger.android.support.DaggerAppCompatActivity
-import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_profile.*
 import javax.inject.Inject
 
-class ProfileActivity : DaggerAppCompatActivity() {
+class ProfileActivity : BaseDaggerActivity() {
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
     private lateinit var binding: ActivityProfileBinding
 
@@ -100,34 +98,24 @@ class ProfileActivity : DaggerAppCompatActivity() {
         }))
     }
 
-    private var changePasswordTask: Disposable? = null
     private fun tryChangePassword(oldPassword: String, newPassword: String) {
-        if (changePasswordTask != null) return
-
-        changePasswordTask = NetworkManager.call(API.changePassword(oldPassword, newPassword), {
+        register(NetworkManager.call(API.changePassword(oldPassword, newPassword), {
             Toast.makeText(this, "Your password has been changed successfully.", Toast.LENGTH_SHORT).show()
             setResult(Activity.RESULT_CANCELED)
             finish()
         }, {
             Toast.makeText(this, if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            changePasswordTask = null
-        })
+        }))
     }
 
-    private var withdrawTask: Disposable? = null
     private fun tryWithdraw(username: String, password: String) {
-        if (withdrawTask != null) return
-
-        withdrawTask = NetworkManager.call(API.withdraw(username, password), {
+        register(NetworkManager.call(API.withdraw(username, password), {
             Toast.makeText(this, "Your membership has been removed successfully.", Toast.LENGTH_SHORT).show()
             setResult(RESULT_CANCELED)
             finish()
         }, {
             Toast.makeText(this, "Withdrawal did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            withdrawTask = null
-        })
+        }))
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -143,11 +131,5 @@ class ProfileActivity : DaggerAppCompatActivity() {
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    override fun onDestroy() {
-        changePasswordTask?.dispose()
-        withdrawTask?.dispose()
-        super.onDestroy()
     }
 }

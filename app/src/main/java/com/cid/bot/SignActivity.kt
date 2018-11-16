@@ -2,18 +2,17 @@ package com.cid.bot
 
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.google.firebase.iid.FirebaseInstanceId
-import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_sign.*
 import kotlin.math.abs
 import kotlin.math.max
 
-class SignActivity : AppCompatActivity() {
+class SignActivity : BaseActivity() {
     enum class Mode(val value: Float, val string: String) {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
@@ -88,10 +87,7 @@ class SignActivity : AppCompatActivity() {
         }.start()
     }
 
-    private var signInTask: Disposable? = null
     private fun trySignIn() {
-        if (signInTask != null) return
-
         val pushToken = pushToken
         if (pushToken == null) {
             Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
@@ -101,7 +97,7 @@ class SignActivity : AppCompatActivity() {
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        signInTask = NetworkManager.call(API.signIn(username, password, pushToken), {
+        register(NetworkManager.call(API.signIn(username, password, pushToken), {
             val token = it["token"].asString
             NetworkManager.authToken = token
             with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
@@ -119,15 +115,10 @@ class SignActivity : AppCompatActivity() {
             finish()
         }, {
             Toast.makeText(this, "Invalid username or password.", Toast.LENGTH_SHORT).show()
-        }, {
-            signInTask = null
-        })
+        }))
     }
 
-    private var signUpTask: Disposable? = null
     private fun trySignUp() {
-        if (signUpTask != null) return
-
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
         val passwordConfirm = eTpasswordConfirm.text.toString()
@@ -137,17 +128,16 @@ class SignActivity : AppCompatActivity() {
             return
         }
 
-        signUpTask = NetworkManager.call(API.signUp(username, password), {
+        register(NetworkManager.call(API.signUp(username, password), {
             Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
             eTusername.setText("")
             eTpassword.setText("")
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
+            Log.e("erorr", it.zip())
             Toast.makeText(this, if ("error" in it) it["error"] else "Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            signUpTask = null
-        })
+        }))
     }
 
     private fun getPushToken() {
@@ -163,11 +153,5 @@ class SignActivity : AppCompatActivity() {
             Mode.SIGN_UP -> changeMode(Mode.SIGN_IN)
             else -> super.onBackPressed()
         }
-    }
-
-    override fun onDestroy() {
-        signInTask?.dispose()
-        signUpTask?.dispose()
-        super.onDestroy()
     }
 }
