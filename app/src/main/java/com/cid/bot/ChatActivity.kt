@@ -46,7 +46,9 @@ class ChatActivity : DaggerAppCompatActivity() {
         binding.executePendingBindings()
 
         /* Message RecyclerView */
-        rVmessages.layoutManager = LinearLayoutManager(applicationContext)
+        val layoutManager = LinearLayoutManager(applicationContext)
+        layoutManager.stackFromEnd = true
+        rVmessages.layoutManager = layoutManager
         rVmessages.adapter = messageAdapter
         viewModel.messages.observe(this, Observer { messages ->
             messages ?: return@Observer
