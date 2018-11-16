@@ -92,7 +92,8 @@ class ProfileActivity : BaseDaggerActivity() {
         ) ?: return
 
         binding.viewModel?.saveMuser(muser, HObserver(onError = {
-            Toast.makeText(this, it.zip(), Toast.LENGTH_LONG).show()
+            val rest = binding.root.applyErrors(it)
+            Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
         }, onSuccess = {
             Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
         }))

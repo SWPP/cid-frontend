@@ -166,7 +166,7 @@ object NetworkManager {
                     }
                 }, { error ->
                     onFinish()
-                    error.message?.let { onError(mapOf("exception" to it)) }
+                    error.message?.let { onError(mapOf("exception??" to it)) }
                 })
     }
 }

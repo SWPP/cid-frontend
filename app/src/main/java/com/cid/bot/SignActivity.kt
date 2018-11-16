@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
-import android.util.Log
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.google.firebase.iid.FirebaseInstanceId
@@ -124,7 +123,9 @@ class SignActivity : BaseActivity() {
         val passwordConfirm = eTpasswordConfirm.text.toString()
 
         if (password != passwordConfirm) {
-            Toast.makeText(this, "Passwords are not identical.", Toast.LENGTH_SHORT).show()
+            val error = "Passwords are not identical."
+            Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
+            root.applyErrors(mapOf("password" to error, "password_confirm" to error))
             return
         }
 
@@ -135,8 +136,8 @@ class SignActivity : BaseActivity() {
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
-            Log.e("erorr", it.zip())
-            Toast.makeText(this, if ("error" in it) it["error"] else "Please try again.", Toast.LENGTH_SHORT).show()
+            val rest = root.applyErrors(it)
+            Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
         }))
     }
 
