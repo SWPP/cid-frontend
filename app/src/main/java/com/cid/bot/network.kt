@@ -180,5 +180,5 @@ class NetManager @Inject constructor(private val context: Context) {
             return ni != null && ni.isConnected
         }
 
-    fun <T> getNetworkError() = HResult<T>(mapOf("exception" to "Network Error"))
+    fun <T> getNetworkError() = HResult<T>(mapOf("error" to "Network Error"))
 }
