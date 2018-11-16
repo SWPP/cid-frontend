@@ -4,13 +4,12 @@ import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.ViewModel
 import android.arch.lifecycle.ViewModelProvider
 import android.databinding.ObservableField
-import com.cid.bot.data.Message
-import com.cid.bot.data.MessageRepository
-import com.cid.bot.data.Muser
-import com.cid.bot.data.MuserRepository
+import com.cid.bot.data.*
 import dagger.MapKey
+import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
 import io.reactivex.observers.DisposableObserver
 import io.reactivex.schedulers.Schedulers
 import java.lang.Exception
@@ -44,6 +43,59 @@ class DaggerAwareViewModelFactory @Inject constructor(private val creators: @Jvm
         } catch (e: Exception) {
             throw RuntimeException(e)
         }
+    }
+}
+
+class HResult<T> {
+    val data: T?
+    var error: Map<String, String>?
+    constructor(data: T) {
+        this.data = data
+        this.error = null
+    }
+    constructor(error: Map<String, String>) {
+        this.data = null
+        this.error = error
+    }
+}
+
+class HObserver<T>(
+        val onError: (Map<String, String>) -> Unit = {},
+        val onSuccess: (T) -> Unit = {},
+        val onFinish: () -> Unit = {}
+)
+
+fun <T> Observable<HResult<T>>.subscribe(vararg observers: HObserver<T>): Disposable {
+    return subscribe({ result ->
+        result.data?.let { data ->
+            observers.forEach { it.onSuccess(data) }
+        }
+        result.error?.let { error ->
+            observers.forEach { it.onError(error) }
+        }
+    }, { error ->
+        error.message?.let { message ->
+            observers.forEach { it.onError(mapOf("exception" to message)) }
+        }
+    }, {
+        observers.forEach { it.onFinish() }
+    })
+}
+
+open class BaseViewModel : ViewModel() {
+    private val compositeDisposable = CompositeDisposable()
+
+    fun <T> call(observable: Observable<HResult<T>>, vararg observers: HObserver<T>) {
+        compositeDisposable += observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(*observers)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (!compositeDisposable.isDisposed)
+            compositeDisposable.dispose()
     }
 }
 
@@ -85,40 +137,32 @@ class ProfileViewModel @Inject constructor(private val repo: MuserRepository) : 
     }
 }
 
-class ChatViewModel @Inject constructor(private val repo: MessageRepository) : ViewModel() {
-    val messages = MutableLiveData<List<Message>>()
+class ChatViewModel @Inject constructor(private val repo: MessageRepository) : BaseViewModel() {
+    val messages = MutableLiveData<MutableList<Message>>()
     val isLoading = ObservableField<Boolean>()
-
-    private val compositeDisposable = CompositeDisposable()
 
     init {
         loadMessages()
     }
 
-    fun loadMessages() {
+    fun loadMessages(vararg observers: HObserver<List<Message>>) {
         isLoading.set(true)
-        compositeDisposable += repo
-                .getMessages()
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(object : DisposableObserver<List<Message>>() {
-                    override fun onNext(t: List<Message>) {
-                        messages.value = t
-                    }
-
-                    override fun onError(e: Throwable) {
-                        // TODO
-                    }
-
-                    override fun onComplete() {
-                        isLoading.set(false)
-                    }
-                })
+        call(repo.getMessages(), HObserver(onSuccess = {
+            messages.value = it.toMutableList()
+        }, onFinish = {
+            isLoading.set(false)
+        }), *observers)
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        if (!compositeDisposable.isDisposed)
-            compositeDisposable.dispose()
+    fun loadMessage(id: Int, vararg observers: HObserver<Message>) {
+        call(repo.getMessage(id), HObserver(onSuccess = {
+            messages.update { add(it) }
+        }), *observers)
+    }
+
+    fun saveMessage(text: String, vararg observers: HObserver<Message>) {
+        call(repo.postMessage(text), HObserver(onSuccess = {
+            messages.update { add(it) }
+        }), *observers)
     }
 }

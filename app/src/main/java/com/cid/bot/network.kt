@@ -10,6 +10,7 @@ import com.google.gson.JsonObject
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
+import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -90,6 +91,34 @@ interface ChatBotAPI {
     fun sendMessage(@Field("text") text: String): Observable<Response<Message>>
 }
 
+fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
+    return map { response ->
+        if (response.isSuccessful)
+            HResult(response.body()!!)
+        else
+            HResult(HashMap<String, String>().apply {
+                val errorString = response.errorBody()?.string() ?: ""
+                val jsonObject = JSONObject(errorString)
+                for (key in jsonObject.keys()) {
+                    var list: JSONArray? = null
+                    try {
+                        list = jsonObject.getJSONArray(key)
+                    } catch (e: JSONException) {}
+                    if (list == null) list = JSONArray("[\"${jsonObject.getString(key)}\"")
+
+                    val strings = mutableListOf<String>()
+                    for (i in 0 until list.length()) {
+                        strings += list.getString(i)
+                    }
+
+                    this[key] = TextUtils.join("\n", strings)
+                }
+            })
+    }.onErrorResumeNext(Function {
+        it.message?.let { Observable.just(HResult(mapOf("exception" to it))) }
+    })
+}
+
 object NetworkManager {
     var authToken: String? = null
 
@@ -150,4 +179,6 @@ class NetManager @Inject constructor(private val context: Context) {
             val ni = conManager.activeNetworkInfo
             return ni != null && ni.isConnected
         }
+
+    fun <T> getNetworkError() = HResult<T>(mapOf("exception" to "Network Error"))
 }

@@ -16,7 +16,6 @@ import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
 import dagger.android.support.DaggerAppCompatActivity
-import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_chat.*
 import javax.inject.Inject
 
@@ -40,22 +39,38 @@ class ChatActivity : DaggerAppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        /* Binding */
         binding = DataBindingUtil.setContentView(this, R.layout.activity_chat)
         val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ChatViewModel::class.java)
         binding.viewModel = viewModel
+        binding.executePendingBindings()
 
-        with (binding) {
-            executePendingBindings()
-
-            rVmessages.layoutManager = LinearLayoutManager(applicationContext)
-            rVmessages.adapter = messageAdapter
-        }
+        /* Message RecyclerView */
+        rVmessages.layoutManager = LinearLayoutManager(applicationContext)
+        rVmessages.adapter = messageAdapter
         viewModel.messages.observe(this, Observer { messages ->
-            messages?.let{ messageAdapter.messages = it.sortedBy(Message::created).toMutableList() }
+            messages ?: return@Observer
+            val original = messageAdapter.messages
+            if (original.size * 2 < messages.size) {
+                original.clear()
+                original.addAll(messages)
+                original.sortBy(Message::created)
+                rVmessages.scrollToPosition(messageAdapter.itemCount - 1)
+                messageAdapter.notifyDataSetChanged()
+            } else {
+                val adding = messages.toSet() - original.toSet()
+                original.addAll(adding)
+                original.sortBy(Message::created)
+                rVmessages.scrollToPosition(messageAdapter.itemCount - 1)
+                for (message in adding.sortedBy(Message::created)) {
+                    messageAdapter.notifyItemInserted(original.indexOfLast { message.id == it.id })
+                }
+            }
         })
 
+        /* Listeners */
         bTsend.setOnClickListener { trySendMessage() }
-        eTtext.setOnKeyListener { v, keyCode, event ->
+        eTtext.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 trySendMessage()
                 true
@@ -65,62 +80,30 @@ class ChatActivity : DaggerAppCompatActivity() {
         requestSignIn()
     }
 
-    private fun refresh(messages: List<Message>) {
-        (rVmessages.adapter as MessageAdapter).messages = messages.sortedBy(Message::created).toMutableList()
-        rVmessages.scrollToPosition(messages.size - 1)
-    }
-
-    private fun addMessage(message: Message) {
-        val adapter = rVmessages.adapter as MessageAdapter
-        adapter.addMessage(message)
-        rVmessages.scrollToPosition(adapter.itemCount - 1)
-    }
-
-    private var loadAllMessagesTask: Disposable? = null
     private fun tryLoadAllMessages() {
-        if (loadAllMessagesTask != null) return
-
-        loadAllMessagesTask = NetworkManager.call(API.loadAllMessages(), {
-            refresh(it)
-        }, {
+        binding.viewModel?.loadMessages(HObserver(onError = {
             Toast.makeText(this, "Could not load message list, please try later.", Toast.LENGTH_LONG).show()
-        }, {
-            loadAllMessagesTask = null
-        })
+        }))
     }
 
-    private var loadMessageTaskMap = mutableMapOf<Int, Disposable>()
     private fun tryLoadMessage(id: Int) {
-        if (loadMessageTaskMap[id] != null) return
-
-        loadMessageTaskMap[id] = NetworkManager.call(API.loadMessage(id), {
-            addMessage(it)
-        }, {
+        binding.viewModel?.loadMessage(id, HObserver(onError = {
             Toast.makeText(this, "Could not load a message, please check your network status.", Toast.LENGTH_LONG).show()
-        }, {
-            loadMessageTaskMap.remove(id)
-        })
+        }))
     }
 
-    private var sendMessageTask: Disposable? = null
     private fun trySendMessage() {
-        if (sendMessageTask != null) return
-
         val text = eTtext.text.toString()
         if (text.isEmpty()) return
         val selectionStart = eTtext.selectionStart
         val selectionEnd = eTtext.selectionEnd
         eTtext.setText("")
 
-        sendMessageTask = NetworkManager.call(API.sendMessage(text), {
-            addMessage(it)
-        }, {
-            Toast.makeText(this, "Try later", Toast.LENGTH_SHORT).show()
+        binding.viewModel?.saveMessage(text, HObserver(onError = {
+            Toast.makeText(this, "Try later ($it)", Toast.LENGTH_SHORT).show()
             eTtext.setText(text)
             eTtext.setSelection(selectionStart, selectionEnd)
-        }, {
-            sendMessageTask = null
-        })
+        }))
     }
 
     private fun requestSignIn() {
@@ -181,22 +164,7 @@ class ChatActivity : DaggerAppCompatActivity() {
         return true
     }
 
-    class MessageAdapter(messages: MutableList<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
-        var messages = messages
-            set(value) {
-                field = value
-                notifyDataSetChanged()
-            }
-
-        fun addMessage(message: Message) {
-            val id = message.id
-            if (id != null && messages.find { it.id == id } != null) return
-
-            messages.add(message)
-            messages.sortBy(Message::created)
-            notifyItemInserted(messages.indexOf(message))
-        }
-
+    class MessageAdapter(val messages: MutableList<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
             val binding = ItemMessageBinding.inflate(inflater, parent, false)
@@ -225,12 +193,5 @@ class ChatActivity : DaggerAppCompatActivity() {
     override fun onPause() {
         super.onPause()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(messagingReceiver)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        loadAllMessagesTask?.dispose()
-        loadMessageTaskMap.values.forEach { it.dispose() }
-        sendMessageTask?.dispose()
     }
 }
