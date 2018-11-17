@@ -47,7 +47,7 @@ class DaggerAwareViewModelFactory @Inject constructor(private val creators: @Jvm
 
 class HResult<T> {
     val data: T?
-    var error: Map<String, String>?
+    val error: Map<String, String>?
     constructor(data: T) {
         this.data = data
         this.error = null
@@ -116,11 +116,8 @@ class ProfileViewModel @Inject constructor(private val repo: MuserRepository) : 
     }
 
     fun saveMuser(muser: Muser, vararg observers: HObserver<Muser>) {
-        isLoading.set(true)
         call(repo.postMuser(muser), HObserver(onSuccess = {
             this.muser.set(it)
-        }, onFinish = {
-            isLoading.set(false)
         }), *observers)
     }
 }

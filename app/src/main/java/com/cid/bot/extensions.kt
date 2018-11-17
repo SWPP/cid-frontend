@@ -4,6 +4,8 @@ import android.arch.lifecycle.MutableLiveData
 import android.text.TextUtils
 import android.view.View
 import android.widget.EditText
+import io.reactivex.Observable
+import io.reactivex.ObservableEmitter
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 
@@ -36,4 +38,11 @@ fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
     }
     tag = list
     return rest
+}
+
+fun <T> createSingle(func: (ObservableEmitter<T>) -> Unit): Observable<T> {
+    return Observable.create {
+        func.invoke(it)
+        it.onComplete()
+    }
 }

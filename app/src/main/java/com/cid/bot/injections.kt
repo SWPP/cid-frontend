@@ -2,7 +2,9 @@ package com.cid.bot
 
 import android.arch.lifecycle.ViewModel
 import android.arch.lifecycle.ViewModelProvider
+import android.arch.persistence.room.Room
 import android.content.Context
+import com.cid.bot.data.AppDatabase
 import dagger.Binds
 import dagger.Component
 import dagger.Module
@@ -35,6 +37,14 @@ internal abstract class ViewModelBuilder {
 }
 
 @Module
+class DatabaseModule {
+    @Provides
+    fun providesAppDatabase(context: Context): AppDatabase {
+        return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app.db").build()
+    }
+}
+
+@Module
 internal abstract class ChatActivityModule {
     @ContributesAndroidInjector()
     internal abstract fun chatActivity(): ChatActivity
@@ -60,6 +70,7 @@ internal abstract class ProfileActivityModule {
 @Component(modules=[
     AndroidSupportInjectionModule::class,
     AppModule::class,
+    DatabaseModule::class,
     ViewModelBuilder::class,
     ChatActivityModule::class,
     ProfileActivityModule::class

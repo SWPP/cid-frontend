@@ -1,23 +1,25 @@
 package com.cid.bot.data
 
+import android.arch.persistence.room.*
 import com.cid.bot.*
+import com.cid.bot.R
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
+@Entity
 data class Muser(
-        val id: Int? = null,
-        val username: String? = null,
-        val gender: Int? = null,
-        val birthdate: String? = null,
-        val autoSignIn: Boolean? = false,
-        val token: String? = null
+        @PrimaryKey var id: Int? = null,
+        var username: String? = null,
+        var gender: Int? = null,
+        var birthdate: String? = null,
+        @Ignore var autoSignIn: Boolean? = false,
+        @Ignore var token: String? = null
 )
 
 class MuserRepository @Inject constructor(private val netManager: NetManager) {
-    @Inject lateinit var localSource : MuserLocalSource
     private val remoteSource = MuserRemoteSource()
+    @Inject lateinit var localSource : MuserLocalSource
     private val mergeMuser = { mr: HResult<Muser>, ml: HResult<Muser> ->
         when {
             mr.data == null -> mr
@@ -37,57 +39,11 @@ class MuserRepository @Inject constructor(private val netManager: NetManager) {
     fun postMuser(muser: Muser): Observable<HResult<Muser>> {
         if (netManager.isConnectedToInternet != true) return Observable.just(netManager.getNetworkError())
         // TODO: try remote post muser and try local save muser sequentially.
-        return Observable.zip(remoteSource.postMuser(muser), localSource.saveMuserConfig(muser), BiFunction(mergeMuser))
+        return Observable.zip(remoteSource.postMuser(muser), localSource.saveMuser(muser), BiFunction(mergeMuser))
     }
 
     fun clearMuser(): Observable<HResult<Muser>> {
         return localSource.clearMuser()
-    }
-}
-
-class MuserLocalSource @Inject constructor(prefManager: PrefManager) {
-    private val pref = prefManager.getPreference(R.string.pref_name_sign)
-    private val autoSignInKey = prefManager.getKey(R.string.pref_key_auto_sign_in)
-    private val tokenKey = prefManager.getKey(R.string.pref_key_token)
-
-    fun getMuser(): Observable<HResult<Muser>> {
-        val muser = Muser(1, "user", 1, "1111-11-11")
-        return Observable.just(muser).delay(2, TimeUnit.SECONDS).map {
-            HResult(it)
-        }
-    }
-
-    fun getMuserConfig(): Observable<HResult<Muser>> {
-        return Observable.create {
-            it.onNext(HResult(Muser(
-                    autoSignIn = pref.getBoolean(autoSignInKey, false),
-                    token = pref.getString(tokenKey, null)
-            )))
-        }
-    }
-
-    fun saveMuserConfig(muser: Muser): Observable<HResult<Muser>> {
-        return Observable.create {
-            pref.edit().apply {
-                muser.autoSignIn?.let {
-                    putBoolean(autoSignInKey, muser.autoSignIn)
-                    putString(tokenKey, if (muser.autoSignIn) muser.token else null)
-                }
-            }.apply()
-            it.onNext(HResult(muser))
-        }
-        // TODO: save on database rest parts
-    }
-
-    fun clearMuser(): Observable<HResult<Muser>> {
-        return Observable.create {
-            pref.edit().apply {
-                putBoolean(autoSignInKey, false)
-                putString(tokenKey, null)
-            }
-            it.onNext(HResult(Muser()))
-        }
-        // TODO: delete muser from database
     }
 }
 
@@ -99,4 +55,64 @@ class MuserRemoteSource {
     fun postMuser(muser: Muser): Observable<HResult<Muser>> {
         return API.saveMyInfo(muser).toHResult()
     }
+}
+
+class MuserLocalSource @Inject constructor(prefManager: PrefManager, db: AppDatabase) {
+    private val dao = db.muserDao()
+    private val pref = prefManager.getPreference(R.string.pref_name_sign)
+    private val autoSignInKey = prefManager.getKey(R.string.pref_key_auto_sign_in)
+    private val tokenKey = prefManager.getKey(R.string.pref_key_token)
+
+    fun getMuser(): Observable<HResult<Muser>> {
+        return createSingle {
+            it.onNext(HResult(dao.get().let {
+                list -> if (list.isEmpty()) Muser() else list[0]
+            }))
+        }
+    }
+
+    fun getMuserConfig(): Observable<HResult<Muser>> {
+        return createSingle {
+            it.onNext(HResult(Muser(
+                    autoSignIn = pref.getBoolean(autoSignInKey, false),
+                    token = pref.getString(tokenKey, null)
+            )))
+        }
+    }
+
+    fun saveMuser(muser: Muser): Observable<HResult<Muser>> {
+        return createSingle {
+            dao.insert(muser)
+            pref.edit().apply {
+                muser.autoSignIn?.let {
+                    putBoolean(autoSignInKey, it)
+                    putString(tokenKey, if (it) muser.token else null)
+                }
+            }.apply()
+            it.onNext(HResult(muser))
+        }
+    }
+
+    fun clearMuser(): Observable<HResult<Muser>> {
+        return createSingle {
+            dao.delete()
+            pref.edit().apply {
+                putBoolean(autoSignInKey, false)
+                putString(tokenKey, null)
+            }
+            it.onNext(HResult(Muser()))
+        }
+    }
+}
+
+@Dao
+interface MuserDao {
+    @Query("SELECT * FROM Muser LIMIT 1")
+    fun get(): List<Muser>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(muser: Muser)
+
+    @Query("DELETE FROM Muser")
+    fun delete()
 }

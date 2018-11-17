@@ -68,15 +68,6 @@ class ProfileActivity : BaseDaggerActivity() {
                     .setNegativeButton("Cancel", null)
                     .show()
         }
-
-        tryLoadInfo()
-    }
-
-    private fun tryLoadInfo() {
-        binding.viewModel?.loadMuser(HObserver({
-            Toast.makeText(this, "Could not load profile temporarily. Please try later.", Toast.LENGTH_SHORT).show()
-            finish()
-        }))
     }
 
     private fun trySaveInfo() {
