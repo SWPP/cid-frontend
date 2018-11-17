@@ -3,13 +3,24 @@ package com.cid.bot
 import android.support.v7.app.AppCompatActivity
 import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.disposables.Disposable
+import io.reactivex.Observable
+import retrofit2.Response
 
 abstract class BaseDaggerActivity: DaggerAppCompatActivity() {
     private val compositeDisposable = CompositeDisposable()
 
-    fun register(disposable: Disposable) {
-        compositeDisposable += disposable
+    fun <T> register(observable: Observable<Response<T>>,
+                     onSuccess: (T) -> Unit,
+                     onError: (Map<String, String>) -> Unit,
+                     onFinish: () -> Unit = {}
+    ) {
+        compositeDisposable += NetworkManager.call(observable, {
+            onSuccess(it)
+        }, {
+            onError(it)
+        }, {
+            onFinish()
+        })
     }
 
     override fun onDestroy() {
@@ -22,8 +33,18 @@ abstract class BaseDaggerActivity: DaggerAppCompatActivity() {
 abstract class BaseActivity: AppCompatActivity() {
     private val compositeDisposable = CompositeDisposable()
 
-    fun register(disposable: Disposable) {
-        compositeDisposable += disposable
+    fun <T> register(observable: Observable<Response<T>>,
+                     onSuccess: (T) -> Unit,
+                     onError: (Map<String, String>) -> Unit,
+                     onFinish: () -> Unit = {}
+    ) {
+        compositeDisposable += NetworkManager.call(observable, {
+            onSuccess(it)
+        }, {
+            onError(it)
+        }, {
+            onFinish()
+        })
     }
 
     override fun onDestroy() {

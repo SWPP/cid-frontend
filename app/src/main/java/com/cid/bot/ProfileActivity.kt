@@ -78,36 +78,50 @@ class ProfileActivity : BaseDaggerActivity() {
 
         val muser = binding.viewModel?.muser?.get()?.copy(
                 gender = gender,
-                birthdate = birthdate,
+                birthdate = birthdate
+        )
+        val muserConfig = binding.viewModel?.muserConfig?.get()?.copy(
                 autoSignIn = sCautoSignIn.isChecked
-        ) ?: return
+        )
+        if (muser == null || muserConfig == null) {
+            binding.viewModel?.loadMuser()
+            binding.viewModel?.loadMuserConfig()
+            Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         binding.viewModel?.saveMuser(muser, HObserver(onError = {
             val rest = binding.root.applyErrors(it)
             Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
         }, onSuccess = {
-            Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
+            binding.viewModel?.saveMuserConfig(muserConfig, CObserver(onError = {
+                Toast.makeText(this, "Error occurred. ${it.zip()}", Toast.LENGTH_LONG).show()
+            }, onFinish = {
+                Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
+            }))
         }))
     }
 
     private fun tryChangePassword(oldPassword: String, newPassword: String) {
-        register(NetworkManager.call(API.changePassword(oldPassword, newPassword), {
+        register(API.changePassword(oldPassword, newPassword), {
+            binding.viewModel?.clearCache()
             Toast.makeText(this, "Your password has been changed successfully.", Toast.LENGTH_SHORT).show()
             setResult(Activity.RESULT_CANCELED)
             finish()
         }, {
             Toast.makeText(this, if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }))
+        })
     }
 
     private fun tryWithdraw(username: String, password: String) {
-        register(NetworkManager.call(API.withdraw(username, password), {
+        register(API.withdraw(username, password), {
+            binding.viewModel?.clearAll()
             Toast.makeText(this, "Your membership has been removed successfully.", Toast.LENGTH_SHORT).show()
             setResult(RESULT_CANCELED)
             finish()
         }, {
             Toast.makeText(this, "Withdrawal did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }))
+        })
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

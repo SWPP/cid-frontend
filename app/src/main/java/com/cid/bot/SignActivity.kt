@@ -2,16 +2,26 @@ package com.cid.bot
 
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.arch.lifecycle.ViewModelProvider
+import android.arch.lifecycle.ViewModelProviders
+import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.support.constraint.ConstraintLayout
 import android.widget.LinearLayout
 import android.widget.Toast
+import com.cid.bot.data.Muser
+import com.cid.bot.data.MuserConfig
+import com.cid.bot.databinding.ActivitySignBinding
 import com.google.firebase.iid.FirebaseInstanceId
 import kotlinx.android.synthetic.main.activity_sign.*
+import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.max
 
-class SignActivity : BaseActivity() {
+class SignActivity : BaseDaggerActivity() {
+    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    private lateinit var binding: ActivitySignBinding
+
     enum class Mode(val value: Float, val string: String) {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
@@ -20,19 +30,29 @@ class SignActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_sign)
 
+        /* Binding */
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_sign)
+        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(SignViewModel::class.java)
+        binding.viewModel = viewModel
+        binding.executePendingBindings()
+//        setContentView(R.layout.activity_sign)
+
+        /* Configure */
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
-        NetworkManager.authToken = null
+//        NetworkManager.authToken = null
 
+/*
         with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
             cBautoSignIn.isChecked = getBoolean(getString(R.string.pref_key_auto_sign_in), false)
             cBsaveUsername.isChecked = getBoolean(getString(R.string.pref_key_save_username), false)
             if (cBsaveUsername.isChecked)
                 eTusername.setText(getString(getString(R.string.pref_key_username), ""))
         }
+*/
 
+        /* Listeners */
         bTsignIn.setOnClickListener {
             if (mode == Mode.SIGN_IN)
                 trySignIn()
@@ -96,9 +116,16 @@ class SignActivity : BaseActivity() {
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        register(NetworkManager.call(API.signIn(username, password, pushToken), {
+        register(API.signIn(username, password, pushToken), {
             val token = it["token"].asString
             NetworkManager.authToken = token
+            binding.viewModel?.saveMuserConfig(MuserConfig(
+                    autoSignIn = cBautoSignIn.isChecked,
+                    token = if (cBautoSignIn.isChecked) token else null,
+                    saveUsername = cBsaveUsername.isChecked,
+                    username = if (cBsaveUsername.isChecked) username else null
+            ))
+/*
             with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
                 putBoolean(getString(R.string.pref_key_auto_sign_in), cBautoSignIn.isChecked)
                 if (cBautoSignIn.isChecked) {
@@ -110,11 +137,12 @@ class SignActivity : BaseActivity() {
                 }
                 apply()
             }
+*/
             setResult(RESULT_OK)
             finish()
         }, {
-            Toast.makeText(this, "Invalid username or password.", Toast.LENGTH_SHORT).show()
-        }))
+            Toast.makeText(this, it.zip(), Toast.LENGTH_SHORT).show()
+        })
     }
 
     private fun trySignUp() {
@@ -125,20 +153,20 @@ class SignActivity : BaseActivity() {
         if (password != passwordConfirm) {
             val error = "Passwords are not identical."
             Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
-            root.applyErrors(mapOf("password" to error, "password_confirm" to error))
+            binding.root.applyErrors(mapOf("password" to error, "password_confirm" to error))
             return
         }
 
-        register(NetworkManager.call(API.signUp(username, password), {
+        register(API.signUp(username, password), {
             Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
             eTusername.setText("")
             eTpassword.setText("")
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
-            val rest = root.applyErrors(it)
+            val rest = binding.root.applyErrors(it)
             Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
-        }))
+        })
     }
 
     private fun getPushToken() {

@@ -166,19 +166,19 @@ object NetworkManager {
                     }
                 }, { error ->
                     onFinish()
-                    error.message?.let { onError(mapOf("exception??" to it)) }
+                    error.message?.let { onError(mapOf("Error" to it)) }
                 })
     }
 }
 
 @Singleton
 class NetManager @Inject constructor(private val context: Context) {
-    val isConnectedToInternet: Boolean?
+    val isConnectedToInternet: Boolean
         get() {
             val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val ni = conManager.activeNetworkInfo
             return ni != null && ni.isConnected
         }
 
-    fun <T> getNetworkError() = HResult<T>(mapOf("error" to "Network Error"))
+    fun <T> getNetworkError() = HResult<T>(mapOf("Network" to "not connected to internet"))
 }

@@ -40,7 +40,11 @@ internal abstract class ViewModelBuilder {
 class DatabaseModule {
     @Provides
     fun providesAppDatabase(context: Context): AppDatabase {
-        return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app.db").build()
+        return Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "app.db"
+        ).fallbackToDestructiveMigration().build()
     }
 }
 
@@ -66,6 +70,17 @@ internal abstract class ProfileActivityModule {
     abstract fun bindProfileViewModel(viewModel: ProfileViewModel): ViewModel
 }
 
+@Module
+internal abstract class SignActivityModule {
+    @ContributesAndroidInjector()
+    internal abstract fun signActivity(): SignActivity
+
+    @Binds
+    @IntoMap
+    @ViewModelKey(SignViewModel::class)
+    abstract fun bindSignViewModel(viewModel: SignViewModel): ViewModel
+}
+
 @Singleton
 @Component(modules=[
     AndroidSupportInjectionModule::class,
@@ -73,7 +88,8 @@ internal abstract class ProfileActivityModule {
     DatabaseModule::class,
     ViewModelBuilder::class,
     ChatActivityModule::class,
-    ProfileActivityModule::class
+    ProfileActivityModule::class,
+    SignActivityModule::class
 ])
 interface AppComponent : AndroidInjector<AppApplication> {
     @Component.Builder
