@@ -1,6 +1,6 @@
 package com.cid.bot.data
 
-import android.arch.persistence.room.*
+import androidx.room.*
 import android.util.Log
 import com.cid.bot.*
 import io.reactivex.Completable

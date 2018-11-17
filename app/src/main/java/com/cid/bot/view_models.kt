@@ -1,9 +1,9 @@
 package com.cid.bot
 
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProvider
-import android.databinding.ObservableField
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.databinding.ObservableField
 import android.text.TextUtils
 import android.util.Log
 import com.cid.bot.data.*

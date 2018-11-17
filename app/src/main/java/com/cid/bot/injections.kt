@@ -1,8 +1,8 @@
 package com.cid.bot
 
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProvider
-import android.arch.persistence.room.Room
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.room.Room
 import android.content.Context
 import com.cid.bot.data.AppDatabase
 import dagger.Binds

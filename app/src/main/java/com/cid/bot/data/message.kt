@@ -1,6 +1,7 @@
 package com.cid.bot.data
 
-import android.arch.persistence.room.*
+import android.util.Log
+import androidx.room.*
 import com.cid.bot.*
 import io.reactivex.Completable
 import io.reactivex.Observable
@@ -82,11 +83,15 @@ class MessageLocalSource @Inject constructor(db: AppDatabase) {
     }
 
     fun saveMessages(messages: List<Message>): Completable {
+//        return dao.deleteAll().flatMapCompletable {
+//            Log.e("message", ":$it")
+//            singleCompletable { dao.insertAll(messages) }
+//        }
 //        return dao.deleteAll().andThen {
 //            dao.insertAll(messages)
 //        }
         return singleCompletable {
-            dao.deleteAll()
+//            dao.deleteAll()
             dao.insertAll(messages)
         }
     }
