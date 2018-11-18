@@ -22,12 +22,13 @@ fun <T> MutableLiveData<T>.update(block: T.() -> Unit) {
 
 fun Map<String, String>.zip(): String {
     return TextUtils.join("\n", keys.map { key ->
-        "$key: ${this[key]}"
+        if (key == "_") this[key] else "$key: ${this[key]}"
     })
 }
 
 fun Map<String, String>.simple(message: String = "Error Occurred."): String {
-    return "$message\n" + zip()
+    val s = zip()
+    return if (s.isBlank()) message else "$message\n$s"
 }
 
 fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
@@ -64,7 +65,7 @@ fun <T> Observable<HResult<T>>.andSave(
         func: (T) -> Completable
 ): Observable<HResult<T>> {
     return doOnNext {
-        it.data!!.let { func(it).subscribeOn(Schedulers.io()).subscribe() }
+        it.data?.also { func(it).subscribeOn(Schedulers.io()).subscribe() }
     }
 }
 

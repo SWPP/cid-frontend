@@ -127,11 +127,6 @@ class ProfileViewModel @Inject constructor(private val muserRepo: MuserRepositor
     val muserConfig = ObservableField<MuserConfig>()
     val isLoading = ObservableField<Boolean>()
 
-    init {
-        loadMuser()
-        loadMuserConfig()
-    }
-
     fun loadMuser(vararg observers: HObserver<Muser>) {
         isLoading.set(true)
         call(muserRepo.getMuser(), HObserver(onSuccess = {

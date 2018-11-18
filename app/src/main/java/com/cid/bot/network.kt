@@ -71,30 +71,32 @@ interface ChatBotAPI {
     fun sendMessage(@Field("text") text: String): Observable<Response<Message>>
 }
 
+fun String?.toMap(): Map<String, String> = HashMap<String, String>().apply {
+    val errorString = if (this@toMap.isNullOrBlank()) "{\"_\":\"Unknown Error\"}" else this@toMap
+    val jsonObject = JSONObject(errorString)
+    for (key in jsonObject.keys()) {
+        val list = try {
+            jsonObject.getJSONArray(key)
+        } catch (e: JSONException) {
+            JSONArray("[\"${jsonObject.get(key)}\"]")
+        }
+        val strings = mutableListOf<String>()
+        for (i in 0 until list.length()) {
+            strings += list.get(i).toString()
+        }
+
+        this[key] = TextUtils.join("\n", strings)
+    }
+}
+
 fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
     return map { response ->
         if (response.isSuccessful)
             HResult(response.body()!!)
         else
-            HResult(HashMap<String, String>().apply {
-                val errorString = response.errorBody()?.string() ?: ""
-                val jsonObject = JSONObject(errorString)
-                for (key in jsonObject.keys()) {
-                    var list: JSONArray? = null
-                    try {
-                        list = jsonObject.getJSONArray(key)
-                    } catch (e: JSONException) {}
-                    if (list == null) list = JSONArray("[\"${jsonObject.getString(key)}\"")
-
-                    val strings = mutableListOf<String>()
-                    for (i in 0 until list.length()) {
-                        strings += list.getString(i)
-                    }
-
-                    this[key] = TextUtils.join("\n", strings)
-                }
-            })
+            HResult(response.errorBody()?.string().toMap())
     }.onErrorResumeNext(Function {
+        it.printStackTrace()
         it.message?.let { Observable.just(HResult(mapOf("exception" to it))) }
     })
 }
@@ -109,7 +111,7 @@ class NetworkManager @Inject constructor(private val context: Context) {
         chain.proceed(request)
     }
     val api: ChatBotAPI = Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8000")    /* development environment */
+            .baseUrl("http://52.78.179.149")    /* development environment */
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(
                     GsonBuilder().serializeNulls().create()
@@ -144,30 +146,13 @@ class NetworkManager @Inject constructor(private val context: Context) {
                 .subscribe({ response ->
                     onFinish()
                     if (response.isSuccessful)
-                        response.body()?.let { onSuccess(it) }
+                        response.body()?.also { onSuccess(it) }
                     else {
-                        onError(HashMap<String, String>().apply {
-                            val errorString = response.errorBody()?.string() ?: ""
-                            val jsonObject = JSONObject(errorString)
-                            for (key in jsonObject.keys()) {
-                                var list: JSONArray? = null
-                                try {
-                                    list = jsonObject.getJSONArray(key)
-                                } catch (e: JSONException) {}
-                                if (list == null) list = JSONArray("[\"${jsonObject.getString(key)}\"")
-
-                                val strings = mutableListOf<String>()
-                                for (i in 0 until list.length()) {
-                                    strings += list.getString(i)
-                                }
-
-                                this[key] = TextUtils.join("\n", strings)
-                            }
-                        })
+                        onError(response.errorBody()?.string().toMap())
                     }
                 }, { error ->
                     onFinish()
-                    error.message?.let { onError(_networkError) }
+                    error.message?.also { onError(_networkError) }
                 })
     }
 

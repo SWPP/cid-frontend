@@ -67,6 +67,13 @@ class ProfileActivity : BaseDaggerActivity() {
                     .setNegativeButton("Cancel", null)
                     .show()
         }
+
+        tryLoadInfo()
+    }
+
+    private fun tryLoadInfo() {
+        viewModel.loadMuser()
+        viewModel.loadMuserConfig()
     }
 
     private fun trySaveInfo() {
@@ -83,8 +90,7 @@ class ProfileActivity : BaseDaggerActivity() {
                 autoSignIn = sCautoSignIn.isChecked
         )
         if (muser == null || muserConfig == null) {
-            viewModel.loadMuser()
-            viewModel.loadMuserConfig()
+            tryLoadInfo()
             Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
             return
         }
@@ -129,12 +135,15 @@ class ProfileActivity : BaseDaggerActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
+        when (item.itemId) {
+            R.id.mIrefresh -> {
+                tryLoadInfo()
+            }
             R.id.mIsave -> {
                 trySaveInfo()
-                true
             }
-            else -> super.onOptionsItemSelected(item)
+            else -> return super.onOptionsItemSelected(item)
         }
+        return true
     }
 }

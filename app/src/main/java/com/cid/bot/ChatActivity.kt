@@ -110,6 +110,7 @@ class ChatActivity : BaseDaggerActivity() {
         fun openSignActivity() {
             startActivityForResult(Intent(this, SignActivity::class.java), REQUEST_SIGN_IN)
         }
+
         if (force) {
             openSignActivity()
             return
@@ -160,6 +161,9 @@ class ChatActivity : BaseDaggerActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.mIrefresh -> {
+                tryLoadAllMessages()
+            }
             R.id.mIprofile -> {
                 startActivityForResult(Intent(this, ProfileActivity::class.java), REQUEST_PROFILE)
             }
