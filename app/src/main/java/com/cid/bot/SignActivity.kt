@@ -9,7 +9,6 @@ import android.os.Bundle
 import androidx.constraintlayout.widget.ConstraintLayout
 import android.widget.LinearLayout
 import android.widget.Toast
-import com.cid.bot.data.Muser
 import com.cid.bot.data.MuserConfig
 import com.cid.bot.databinding.ActivitySignBinding
 import com.google.firebase.iid.FirebaseInstanceId
@@ -20,6 +19,7 @@ import kotlin.math.max
 
 class SignActivity : BaseDaggerActivity() {
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    lateinit var viewModel: SignViewModel
     private lateinit var binding: ActivitySignBinding
 
     enum class Mode(val value: Float, val string: String) {
@@ -33,24 +33,13 @@ class SignActivity : BaseDaggerActivity() {
 
         /* Binding */
         binding = DataBindingUtil.setContentView(this, R.layout.activity_sign)
-        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(SignViewModel::class.java)
+        viewModel = ViewModelProviders.of(this, viewModelFactory).get(SignViewModel::class.java)
         binding.viewModel = viewModel
         binding.executePendingBindings()
-//        setContentView(R.layout.activity_sign)
 
         /* Configure */
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
-//        NetworkManager.authToken = null
-
-/*
-        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
-            cBautoSignIn.isChecked = getBoolean(getString(R.string.pref_key_auto_sign_in), false)
-            cBsaveUsername.isChecked = getBoolean(getString(R.string.pref_key_save_username), false)
-            if (cBsaveUsername.isChecked)
-                eTusername.setText(getString(getString(R.string.pref_key_username), ""))
-        }
-*/
 
         /* Listeners */
         bTsignIn.setOnClickListener {
@@ -67,6 +56,7 @@ class SignActivity : BaseDaggerActivity() {
                 changeMode(Mode.SIGN_UP)
         }
 
+        viewModel.invalidateMuserConfig()
         getPushToken()
     }
 
@@ -116,30 +106,17 @@ class SignActivity : BaseDaggerActivity() {
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        register(API.signIn(username, password, pushToken), {
+        register(net.api.signIn(username, password, pushToken), {
             val token = it["token"].asString
-            NetworkManager.authToken = token
-            binding.viewModel?.saveMuserConfig(MuserConfig(
+            viewModel.saveMuserConfig(MuserConfig(
                     autoSignIn = cBautoSignIn.isChecked,
-                    token = if (cBautoSignIn.isChecked) token else null,
+                    token = token,
                     saveUsername = cBsaveUsername.isChecked,
                     username = if (cBsaveUsername.isChecked) username else null
-            ))
-/*
-            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
-                putBoolean(getString(R.string.pref_key_auto_sign_in), cBautoSignIn.isChecked)
-                if (cBautoSignIn.isChecked) {
-                    putString(getString(R.string.pref_key_token), token)
-                }
-                putBoolean(getString(R.string.pref_key_save_username), cBsaveUsername.isChecked)
-                if (cBsaveUsername.isChecked) {
-                    putString(getString(R.string.pref_key_username), username)
-                }
-                apply()
-            }
-*/
-            setResult(RESULT_OK)
-            finish()
+            ), CObserver(onFinish = {
+                setResult(RESULT_OK)
+                finish()
+            }))
         }, {
             Toast.makeText(this, it.zip(), Toast.LENGTH_SHORT).show()
         })
@@ -157,7 +134,7 @@ class SignActivity : BaseDaggerActivity() {
             return
         }
 
-        register(API.signUp(username, password), {
+        register(net.api.signUp(username, password), {
             Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
             eTusername.setText("")
             eTpassword.setText("")
@@ -165,7 +142,7 @@ class SignActivity : BaseDaggerActivity() {
             changeMode(Mode.SIGN_IN)
         }, {
             val rest = binding.root.applyErrors(it)
-            Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, rest.simple(), Toast.LENGTH_LONG).show()
         })
     }
 

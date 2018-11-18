@@ -1,14 +1,15 @@
 package com.cid.bot
 
+import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
 import android.text.TextUtils
 import android.view.View
 import android.widget.EditText
 import io.reactivex.Completable
 import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
 
 operator fun CompositeDisposable.plusAssign(disposable: Disposable) {
     add(disposable)
@@ -23,6 +24,10 @@ fun Map<String, String>.zip(): String {
     return TextUtils.join("\n", keys.map { key ->
         "$key: ${this[key]}"
     })
+}
+
+fun Map<String, String>.simple(message: String = "Error Occurred."): String {
+    return "$message\n" + zip()
 }
 
 fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
@@ -53,4 +58,16 @@ fun singleCompletable(func: () -> Unit): Completable {
         func()
         it.onComplete()
     }
+}
+
+fun <T> Observable<HResult<T>>.andSave(
+        func: (T) -> Completable
+): Observable<HResult<T>> {
+    return doOnNext {
+        it.data!!.let { func(it).subscribeOn(Schedulers.io()).subscribe() }
+    }
+}
+
+fun SharedPreferences.commit(func: SharedPreferences.Editor.() -> Unit) {
+    edit().apply(func).apply()
 }

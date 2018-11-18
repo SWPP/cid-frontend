@@ -1,6 +1,5 @@
 package com.cid.bot.data
 
-import android.util.Log
 import androidx.room.*
 import com.cid.bot.*
 import io.reactivex.Completable
@@ -16,50 +15,41 @@ data class Message(
         val created: String? = null
 )
 
-class MessageRepository @Inject constructor(private val netManager: NetManager) {
-    private val remoteSource = MessageRemoteSource()
+class MessageRepository @Inject constructor(private val networkManager: NetworkManager) {
+    @Inject lateinit var remoteSource: MessageRemoteSource
     @Inject lateinit var localSource: MessageLocalSource
 
     fun getMessages(): Observable<HResult<List<Message>>> {
-        if (netManager.isConnectedToInternet) {
-            return remoteSource.getMessages().map {
-                it.data!!.let { localSource.saveMessages(it) }
-                it
-            }
+        if (networkManager.isConnectedToInternet) {
+            return remoteSource.getMessages().andSave(localSource::saveMessages)
         }
         return localSource.getMessages()
     }
 
     fun getMessage(id: Int): Observable<HResult<Message>> {
-        if (netManager.isConnectedToInternet) {
-            return remoteSource.getMessage(id).map {
-                it.data!!.let { localSource.saveMessage(it) }
-                it
-            }
+        if (networkManager.isConnectedToInternet) {
+            return remoteSource.getMessage(id).andSave(localSource::saveMessage)
         }
         return localSource.getMessage(id)
     }
 
     fun postMessage(text: String): Observable<HResult<Message>> {
-        if (!netManager.isConnectedToInternet) return Observable.just(netManager.getNetworkError())
-        return remoteSource.postMessage(text).map {
-            it.data!!.let { localSource.saveMessage(it) }
-            it
-        }
+        if (!networkManager.isConnectedToInternet) return Observable.just(networkManager.getNetworkError())
+        return remoteSource.postMessage(text).andSave(localSource::saveMessage)
     }
 }
 
-class MessageRemoteSource {
+class MessageRemoteSource @Inject constructor(private val net: NetworkManager) {
     fun getMessages(): Observable<HResult<List<Message>>> {
-        return API.loadAllMessages().toHResult()
+        return net.api.loadAllMessages().toHResult()
     }
 
     fun getMessage(id: Int): Observable<HResult<Message>> {
-        return API.loadMessage(id).toHResult()
+        return net.api.loadMessage(id).toHResult()
     }
 
     fun postMessage(text: String): Observable<HResult<Message>> {
-        return API.sendMessage(text).toHResult()
+        return net.api.sendMessage(text).toHResult()
     }
 }
 
@@ -67,9 +57,7 @@ class MessageLocalSource @Inject constructor(db: AppDatabase) {
     private val dao = db.messageDao()
 
     fun getMessages(): Observable<HResult<List<Message>>> {
-        return singleObservable {
-            HResult(dao.getAll())
-        }
+        return singleObservable { HResult(dao.getAll()) }
     }
 
     fun getMessage(id: Int): Observable<HResult<Message>> {
@@ -77,21 +65,12 @@ class MessageLocalSource @Inject constructor(db: AppDatabase) {
     }
 
     fun saveMessage(message: Message): Completable {
-        return singleCompletable {
-            dao.insert(message)
-        }
+        return singleCompletable { dao.insert(message) }
     }
 
     fun saveMessages(messages: List<Message>): Completable {
-//        return dao.deleteAll().flatMapCompletable {
-//            Log.e("message", ":$it")
-//            singleCompletable { dao.insertAll(messages) }
-//        }
-//        return dao.deleteAll().andThen {
-//            dao.insertAll(messages)
-//        }
         return singleCompletable {
-//            dao.deleteAll()
+            dao.deleteAll()
             dao.insertAll(messages)
         }
     }
@@ -105,11 +84,11 @@ interface MessageDao {
     @Query("SELECT * FROM Message WHERE id = :id")
     fun getById(id: Int): Message
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(message: Message)
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insertAll(message: List<Message>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertAll(messages: List<Message>)
 
     @Query("DELETE FROM Message")
     fun deleteAll()

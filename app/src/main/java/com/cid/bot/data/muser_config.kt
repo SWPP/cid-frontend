@@ -6,9 +6,9 @@ import io.reactivex.Observable
 import javax.inject.Inject
 
 data class MuserConfig(
-        val autoSignIn: Boolean? = false,
+        val autoSignIn: Boolean = false,
         val token: String? = null,
-        val saveUsername: Boolean? = false,
+        val saveUsername: Boolean = false,
         val username: String? = null
 )
 
@@ -23,12 +23,12 @@ class MuserConfigRepository @Inject constructor() {
         return localSource.saveMuserConfig(muserConfig)
     }
 
-    fun clearMuserConfig(): Completable {
-        return localSource.clearMuserConfig()
+    fun invalidateMuserConfig(): Observable<HResult<MuserConfig>> {
+        return localSource.invalidateMuserConfig()
     }
 }
 
-class LocalSource @Inject constructor(prefManager: PrefManager) {
+class LocalSource @Inject constructor(prefManager: PrefManager, private val networkManager: NetworkManager) {
     private val pref = prefManager.getPreference(R.string.pref_name_sign)
     private val autoSignInKey = prefManager.getKey(R.string.pref_key_auto_sign_in)
     private val tokenKey = prefManager.getKey(R.string.pref_key_token)
@@ -42,33 +42,28 @@ class LocalSource @Inject constructor(prefManager: PrefManager) {
                     token = pref.getString(tokenKey, null),
                     saveUsername = pref.getBoolean(saveUsernameKey, false),
                     username = pref.getString(usernameKey, null)
-            ).also { NetworkManager.authToken = it.token })
+            ).also { networkManager.authToken = it.token })
         }
     }
 
     fun saveMuserConfig(muserConfig: MuserConfig): Completable {
         return singleCompletable {
-            pref.edit().apply {
-                muserConfig.autoSignIn?.let {
-                    putBoolean(autoSignInKey, it)
-                    putString(tokenKey, if (it) muserConfig.token else null)
-                }
-                muserConfig.saveUsername?.let {
-                    putBoolean(saveUsernameKey, it)
-                    putString(usernameKey, if (it) muserConfig.username else null)
-                }
-            }.apply()
+            pref.commit {
+                putBoolean(autoSignInKey, muserConfig.autoSignIn)
+                putString(tokenKey, if (muserConfig.autoSignIn) muserConfig.token else null)
+                putBoolean(saveUsernameKey, muserConfig.saveUsername)
+                putString(usernameKey, muserConfig.username)
+            }
+            networkManager.authToken = muserConfig.token
         }
     }
 
-    fun clearMuserConfig(): Completable {
+    fun invalidateMuserConfig(): Observable<HResult<MuserConfig>> {
         return singleCompletable {
-            pref.edit().apply {
+            pref.commit {
                 putBoolean(autoSignInKey, false)
                 putString(tokenKey, null)
-                putBoolean(saveUsernameKey, false)
-                putString(usernameKey, null)
             }
-        }
+        }.andThen(getMuserConfig())
     }
 }

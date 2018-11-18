@@ -16,6 +16,7 @@ import javax.inject.Inject
 
 class ProfileActivity : BaseDaggerActivity() {
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    lateinit var viewModel: ProfileViewModel
     private lateinit var binding: ActivityProfileBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,7 +24,7 @@ class ProfileActivity : BaseDaggerActivity() {
 
         /* Binding */
         binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
-        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ProfileViewModel::class.java)
+        viewModel = ViewModelProviders.of(this, viewModelFactory).get(ProfileViewModel::class.java)
         binding.viewModel = viewModel
         binding.executePendingBindings()
 
@@ -33,7 +34,6 @@ class ProfileActivity : BaseDaggerActivity() {
         /* Listeners */
         bTchangePassword.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_change_password, null)
-
             val dialog = AlertDialog.Builder(this)
                     .setTitle("Change Password")
                     .setMessage("Please input your current password and new password")
@@ -55,7 +55,6 @@ class ProfileActivity : BaseDaggerActivity() {
         }
         bTwithdraw.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_withdraw, null)
-
             AlertDialog.Builder(this)
                     .setTitle("Withdraw")
                     .setMessage("Please input your username and password.")
@@ -76,26 +75,26 @@ class ProfileActivity : BaseDaggerActivity() {
             if (it.isNotEmpty()) it else null
         }
 
-        val muser = binding.viewModel?.muser?.get()?.copy(
+        val muser = viewModel.muser.get()?.copy(
                 gender = gender,
                 birthdate = birthdate
         )
-        val muserConfig = binding.viewModel?.muserConfig?.get()?.copy(
+        val muserConfig = viewModel.muserConfig.get()?.copy(
                 autoSignIn = sCautoSignIn.isChecked
         )
         if (muser == null || muserConfig == null) {
-            binding.viewModel?.loadMuser()
-            binding.viewModel?.loadMuserConfig()
+            viewModel.loadMuser()
+            viewModel.loadMuserConfig()
             Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        binding.viewModel?.saveMuser(muser, HObserver(onError = {
+        viewModel.saveMuser(muser, HObserver(onError = {
             val rest = binding.root.applyErrors(it)
-            Toast.makeText(this, "Error occurred. ${rest.zip()}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, rest.simple(), Toast.LENGTH_LONG).show()
         }, onSuccess = {
-            binding.viewModel?.saveMuserConfig(muserConfig, CObserver(onError = {
-                Toast.makeText(this, "Error occurred. ${it.zip()}", Toast.LENGTH_LONG).show()
+            viewModel.saveMuserConfig(muserConfig, CObserver(onError = {
+                Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
             }, onFinish = {
                 Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
             }))
@@ -103,8 +102,8 @@ class ProfileActivity : BaseDaggerActivity() {
     }
 
     private fun tryChangePassword(oldPassword: String, newPassword: String) {
-        register(API.changePassword(oldPassword, newPassword), {
-            binding.viewModel?.clearCache()
+        register(net.api.changePassword(oldPassword, newPassword), {
+            viewModel.invalidateMuserConfig()
             Toast.makeText(this, "Your password has been changed successfully.", Toast.LENGTH_SHORT).show()
             setResult(Activity.RESULT_CANCELED)
             finish()
@@ -114,8 +113,8 @@ class ProfileActivity : BaseDaggerActivity() {
     }
 
     private fun tryWithdraw(username: String, password: String) {
-        register(API.withdraw(username, password), {
-            binding.viewModel?.clearAll()
+        register(net.api.withdraw(username, password), {
+            viewModel.invalidateMuserConfig()
             Toast.makeText(this, "Your membership has been removed successfully.", Toast.LENGTH_SHORT).show()
             setResult(RESULT_CANCELED)
             finish()

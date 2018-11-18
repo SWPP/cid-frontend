@@ -25,26 +25,6 @@ import retrofit2.http.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val interceptor = object : Interceptor {
-    val authToken: String
-        get() = if (NetworkManager.authToken == null) "" else "Token ${NetworkManager.authToken}"
-
-    override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
-        val original = chain.request()
-        val builder = original.newBuilder().header("Authorization", authToken)
-        val request = builder.build()
-        return chain.proceed(request)
-    }
-}
-val API: ChatBotAPI = Retrofit.Builder()
-        .baseUrl("http://10.0.2.2:8000")    /* development environment */
-        .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-        .addConverterFactory(GsonConverterFactory.create(
-                GsonBuilder().serializeNulls().create()
-        ))
-        .client(OkHttpClient.Builder().addInterceptor(interceptor).build())
-        .build().create(ChatBotAPI::class.java)
-
 interface ChatBotAPI {
     @FormUrlEncoded
     @POST("/chatbot/auth/signup/")
@@ -119,8 +99,29 @@ fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
     })
 }
 
-object NetworkManager {
+@Singleton
+class NetworkManager @Inject constructor(private val context: Context) {
     var authToken: String? = null
+    private val interceptor = Interceptor { chain ->
+        val original = chain.request()
+        val builder = original.newBuilder().header("Authorization", if (authToken == null) "" else "Token $authToken")
+        val request = builder.build()
+        chain.proceed(request)
+    }
+    val api: ChatBotAPI = Retrofit.Builder()
+            .baseUrl("http://10.0.2.2:8000")    /* development environment */
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(
+                    GsonBuilder().serializeNulls().create()
+            ))
+            .client(OkHttpClient.Builder().addInterceptor(interceptor).build())
+            .build().create(ChatBotAPI::class.java)
+    val isConnectedToInternet: Boolean
+        get() {
+            val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val ni = conManager.activeNetworkInfo
+            return ni != null && ni.isConnected
+        }
 
     /**
      * Helper function of API methods.
@@ -166,19 +167,10 @@ object NetworkManager {
                     }
                 }, { error ->
                     onFinish()
-                    error.message?.let { onError(mapOf("Error" to it)) }
+                    error.message?.let { onError(_networkError) }
                 })
     }
-}
 
-@Singleton
-class NetManager @Inject constructor(private val context: Context) {
-    val isConnectedToInternet: Boolean
-        get() {
-            val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val ni = conManager.activeNetworkInfo
-            return ni != null && ni.isConnected
-        }
-
-    fun <T> getNetworkError() = HResult<T>(mapOf("Network" to "not connected to internet"))
+    private val _networkError = mapOf("Network" to "Failed to connect to the server")
+    fun <T> getNetworkError() = HResult<T>(_networkError)
 }

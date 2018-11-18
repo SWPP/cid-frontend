@@ -4,8 +4,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.databinding.ObservableField
-import android.text.TextUtils
-import android.util.Log
 import com.cid.bot.data.*
 import dagger.MapKey
 import io.reactivex.Completable
@@ -161,12 +159,10 @@ class ProfileViewModel @Inject constructor(private val muserRepo: MuserRepositor
         }), *observers)
     }
 
-    fun clearCache(vararg observers: CObserver) {
-        call(muserRepo.clearMuser().andThen(muserConfigRepo.saveMuserConfig((muserConfig.get() ?: MuserConfig()).copy(autoSignIn = false))), *observers)
-    }
-
-    fun clearAll(vararg observers: CObserver) {
-        call(muserRepo.clearMuser().andThen(muserConfigRepo.clearMuserConfig()), *observers)
+    fun invalidateMuserConfig(vararg observers: HObserver<MuserConfig>) {
+        call(muserConfigRepo.invalidateMuserConfig(), HObserver(onSuccess = {
+            muserConfig.set(it)
+        }), *observers)
     }
 }
 
@@ -179,10 +175,9 @@ class ChatViewModel @Inject constructor(private val messageRepo: MessageReposito
         isLoading.set(true)
         call(messageRepo.getMessages(), HObserver(onSuccess = {
             messages.value = it.toMutableList()
-            Log.e("loaded", "size: ${it.size}\n")
-            it.sortedBy(Message::id).map { Log.e("loaded ${it.id}", it.toString()) }
         }, onFinish = {
             isLoading.set(false)
+        }, onError = {
         }), *observers)
     }
 
@@ -205,12 +200,8 @@ class ChatViewModel @Inject constructor(private val messageRepo: MessageReposito
     }
 }
 
-class SignViewModel @Inject constructor(private val muserConfigRepo: MuserConfigRepository) : BaseViewModel() {
+class SignViewModel @Inject constructor(private val muserConfigRepo: MuserConfigRepository, private val muserRepo: MuserRepository) : BaseViewModel() {
     val muserConfig = ObservableField<MuserConfig>()
-
-    init {
-        loadMuserConfig()
-    }
 
     fun loadMuserConfig(vararg observers: HObserver<MuserConfig>) {
         call(muserConfigRepo.getMuserConfig(), HObserver(onSuccess = {
@@ -221,6 +212,12 @@ class SignViewModel @Inject constructor(private val muserConfigRepo: MuserConfig
     fun saveMuserConfig(muserConfig: MuserConfig, vararg observers: CObserver) {
         call(muserConfigRepo.saveMuserConfig(muserConfig), CObserver(onFinish = {
             this.muserConfig.set(muserConfig)
+        }), *observers)
+    }
+
+    fun invalidateMuserConfig(vararg observers: HObserver<MuserConfig>) {
+        call(muserRepo.clearMuser().andThen(muserConfigRepo.invalidateMuserConfig()), HObserver(onSuccess = {
+            muserConfig.set(it)
         }), *observers)
     }
 }

@@ -25,14 +25,14 @@ class ChatActivity : BaseDaggerActivity() {
     }
 
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    lateinit var viewModel: ChatViewModel
     private lateinit var binding: ActivityChatBinding
-    @Inject lateinit var netManager: NetManager
     private val messageAdapter = MessageAdapter(mutableListOf())
 
     private val messagingReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val messageId = intent.getIntExtra("message_id", -1)
-            binding.viewModel?.loadMessage(messageId, HObserver(onError = {
+            viewModel.loadMessage(messageId, HObserver(onError = {
                 Toast.makeText(this@ChatActivity, it.zip(), Toast.LENGTH_SHORT).show()
             }))
         }
@@ -43,7 +43,7 @@ class ChatActivity : BaseDaggerActivity() {
 
         /* Binding */
         binding = DataBindingUtil.setContentView(this, R.layout.activity_chat)
-        val viewModel = ViewModelProviders.of(this, viewModelFactory).get(ChatViewModel::class.java)
+        viewModel = ViewModelProviders.of(this, viewModelFactory).get(ChatViewModel::class.java)
         binding.viewModel = viewModel
         binding.executePendingBindings()
 
@@ -81,20 +81,14 @@ class ChatActivity : BaseDaggerActivity() {
             } else false
         }
 
-        binding.viewModel?.loadMuserConfig(HObserver(onFinish = {
+        viewModel.loadMuserConfig(HObserver(onFinish = {
             requestSignIn()
         }))
     }
 
     private fun tryLoadAllMessages() {
-        binding.viewModel?.loadMessages(HObserver(onError = {
-            Toast.makeText(this, "Could not load message list, please try later.", Toast.LENGTH_LONG).show()
-        }))
-    }
-
-    private fun tryLoadMessage(id: Int) {
-        binding.viewModel?.loadMessage(id, HObserver(onError = {
-            Toast.makeText(this, "Could not load a message, please check your network status.", Toast.LENGTH_LONG).show()
+        viewModel.loadMessages(HObserver(onError = {
+            Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
         }))
     }
 
@@ -105,57 +99,41 @@ class ChatActivity : BaseDaggerActivity() {
         val selectionEnd = eTtext.selectionEnd
         eTtext.setText("")
 
-        binding.viewModel?.saveMessage(text, HObserver(onError = {
-            Toast.makeText(this, "Error occurred. ${it.zip()}", Toast.LENGTH_LONG).show()
+        viewModel.saveMessage(text, HObserver(onError = {
+            Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
             eTtext.setText(text)
             eTtext.setSelection(selectionStart, selectionEnd)
         }))
     }
 
-    private fun requestSignIn() {
+    private fun requestSignIn(force: Boolean = false) {
         fun openSignActivity() {
-            startActivityForResult(Intent(this@ChatActivity, SignActivity::class.java), REQUEST_SIGN_IN)
+            startActivityForResult(Intent(this, SignActivity::class.java), REQUEST_SIGN_IN)
+        }
+        if (force) {
+            openSignActivity()
+            return
         }
 
-//        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
-            if (binding.viewModel?.muserConfig?.get()?.autoSignIn == true) {
-//            if (getBoolean(getString(R.string.pref_key_auto_sign_in), false)) {
-//                NetworkManager.authToken = getString(getString(R.string.pref_key_token), null)
-                if (netManager.isConnectedToInternet) {
-                    register(API.loadMyInfo(), onSuccess = {
+        viewModel.loadMuserConfig(HObserver(onError = {
+            openSignActivity()
+        }, onSuccess = {
+            if(it.autoSignIn && it.token != null) {
+                if (net.isConnectedToInternet) {
+                    register(net.api.loadMyInfo(), onSuccess = {
                         Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
                         tryLoadAllMessages()
-                    }, onError =  {
+                    }, onError = {
                         openSignActivity()
                     })
                 } else {
-                    if (binding.viewModel?.loadMuserConfig(HObserver(onError = {
-                        openSignActivity()
-                    }, onSuccess = {
-                        Toast.makeText(this@ChatActivity, "OFFLINE MODE", Toast.LENGTH_SHORT).show()
-                        tryLoadAllMessages()
-                    })) == null)
-                        openSignActivity()
+                    Toast.makeText(this@ChatActivity, "OFFLINE MODE as ${it.username}", Toast.LENGTH_SHORT).show()
+                    tryLoadAllMessages()
                 }
-//                if (binding.viewModel?.loadMuserConfig(HObserver({
-//                            Toast.makeText(this, it.zip(), Toast.LENGTH_SHORT).show();
-//                    openSignActivity()
-//                }, {
-//                    Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
-//
-//                })) == null)
-//                    openSignActivity()
-/*
-                register(API.loadMyInfo(), {
-
-                }, {
-
-                })
-*/
             } else {
                 openSignActivity()
             }
-//        }
+        }))
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -186,7 +164,7 @@ class ChatActivity : BaseDaggerActivity() {
                 startActivityForResult(Intent(this, ProfileActivity::class.java), REQUEST_PROFILE)
             }
             R.id.mIsignOut -> {
-                register(API.signOut(), {}, {}, { requestSignIn() })
+                register(net.api.signOut(), {}, {}, { requestSignIn(true) })
             }
             R.id.mIexit -> {
                 finish()

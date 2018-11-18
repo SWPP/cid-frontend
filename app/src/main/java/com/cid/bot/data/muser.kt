@@ -1,7 +1,6 @@
 package com.cid.bot.data
 
 import androidx.room.*
-import android.util.Log
 import com.cid.bot.*
 import io.reactivex.Completable
 import io.reactivex.Observable
@@ -15,26 +14,19 @@ data class Muser(
         var birthdate: String? = null
 )
 
-class MuserRepository @Inject constructor(private val netManager: NetManager) {
-    private val remoteSource = MuserRemoteSource()
+class MuserRepository @Inject constructor(private val networkManager: NetworkManager) {
+    @Inject lateinit var remoteSource: MuserRemoteSource
     @Inject lateinit var localSource: MuserLocalSource
 
     fun getMuser(): Observable<HResult<Muser>> {
-        if (netManager.isConnectedToInternet)
-            return remoteSource.getMuser()
+        if (networkManager.isConnectedToInternet)
+            return remoteSource.getMuser().andSave(localSource::saveMuser)
         return localSource.getMuser()
     }
 
     fun postMuser(muser: Muser): Observable<HResult<Muser>> {
-        Log.e("postMuser", "network ${netManager.isConnectedToInternet}")
-        if (!netManager.isConnectedToInternet) return Observable.just(netManager.getNetworkError())
-        return remoteSource.postMuser(muser)
-                .map {
-                    it.data!!.let {
-                        localSource.saveMuser(it)
-                        HResult(it)
-                    }
-                }
+        if (!networkManager.isConnectedToInternet) return Observable.just(networkManager.getNetworkError())
+        return remoteSource.postMuser(muser).andSave(localSource::saveMuser)
     }
 
     fun clearMuser(): Completable {
@@ -42,13 +34,13 @@ class MuserRepository @Inject constructor(private val netManager: NetManager) {
     }
 }
 
-class MuserRemoteSource {
+class MuserRemoteSource @Inject constructor(private val net: NetworkManager) {
     fun getMuser(): Observable<HResult<Muser>> {
-        return API.loadMyInfo().toHResult()
+        return net.api.loadMyInfo().toHResult()
     }
 
     fun postMuser(muser: Muser): Observable<HResult<Muser>> {
-        return API.saveMyInfo(muser).toHResult()
+        return net.api.saveMyInfo(muser).toHResult()
     }
 }
 
