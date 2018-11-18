@@ -22,7 +22,7 @@ fun <T> MutableLiveData<T>.update(block: T.() -> Unit) {
 
 fun Map<String, String>.zip(): String {
     return TextUtils.join("\n", keys.map { key ->
-        if (key == "_") this[key] else "$key: ${this[key]}"
+        if (key == "_" || key == "error") this[key] else "$key: ${this[key]}"
     })
 }
 
