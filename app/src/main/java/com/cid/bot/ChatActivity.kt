@@ -154,6 +154,18 @@ class ChatActivity : BaseDaggerActivity() {
         }
     }
 
+    private var lastBackPressed = 0L
+    override fun onBackPressed() {
+        val current = System.currentTimeMillis()
+        val delta = current - lastBackPressed
+        if (delta > 1500) {
+            Toast.makeText(this, "Press once more to exit.", Toast.LENGTH_SHORT).show()
+            lastBackPressed = current
+            return
+        }
+        super.onBackPressed()
+    }
+
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_chat, menu)
         return true
