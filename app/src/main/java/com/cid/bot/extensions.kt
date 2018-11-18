@@ -34,10 +34,15 @@ fun Map<String, String>.simple(message: String = "Error Occurred."): String {
 fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
     val list = mutableListOf<String>()
     val rest = mutableMapOf<String, String>()
+    var first = true
     for ((key, value) in errors) {
         try {
             val view = findViewWithTag(key) as EditText
             view.error = value
+            if (first) {
+                view.requestFocus()
+                first = false
+            }
             list.add(key)
         } catch (e: ClassCastException) {
             rest[key] = value
