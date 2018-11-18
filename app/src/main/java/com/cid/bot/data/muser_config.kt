@@ -50,7 +50,7 @@ class LocalSource @Inject constructor(prefManager: PrefManager, private val netw
         return singleCompletable {
             pref.commit {
                 putBoolean(autoSignInKey, muserConfig.autoSignIn)
-                putString(tokenKey, if (muserConfig.autoSignIn) muserConfig.token else null)
+                putString(tokenKey, muserConfig.token)
                 putBoolean(saveUsernameKey, muserConfig.saveUsername)
                 putString(usernameKey, muserConfig.username)
             }

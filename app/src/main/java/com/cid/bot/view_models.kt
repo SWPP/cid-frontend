@@ -172,7 +172,6 @@ class ChatViewModel @Inject constructor(private val messageRepo: MessageReposito
             messages.value = it.toMutableList()
         }, onFinish = {
             isLoading.set(false)
-        }, onError = {
         }), *observers)
     }
 
