@@ -107,6 +107,8 @@ class ChatActivity : BaseDaggerActivity() {
 
     private fun requestSignIn(force: Boolean = false) {
         fun openSignActivity() {
+            messageAdapter.messages.clear()
+            messageAdapter.notifyDataSetChanged()
             startActivityForResult(Intent(this, SignActivity::class.java), REQUEST_SIGN_IN)
         }
 
