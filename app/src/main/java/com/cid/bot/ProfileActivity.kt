@@ -9,7 +9,6 @@ import androidx.appcompat.app.AlertDialog
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
-import android.widget.Toast
 import com.cid.bot.databinding.ActivityProfileBinding
 import kotlinx.android.synthetic.main.activity_profile.*
 import javax.inject.Inject
@@ -46,7 +45,7 @@ class ProfileActivity : BaseDaggerActivity() {
                 val newPassword = layout.findViewById<EditText>(R.id.eTnewPassword).text.toString()
                 val newPasswordConfirm = layout.findViewById<EditText>(R.id.eTnewPasswordConfirm).text.toString()
                 if (newPassword != newPasswordConfirm) {
-                    Toast.makeText(this, "New Passwords are not identical.", Toast.LENGTH_SHORT).show()
+                    toastShort("New Passwords are not identical.")
                 } else {
                     tryChangePassword(currentPassword, newPassword)
                     dialog.dismiss()
@@ -91,18 +90,18 @@ class ProfileActivity : BaseDaggerActivity() {
         )
         if (muser == null || muserConfig == null) {
             tryLoadInfo()
-            Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
+            toastShort("Try later.")
             return
         }
 
         viewModel.saveMuser(muser, HObserver(onError = {
             val rest = binding.root.applyErrors(it)
-            Toast.makeText(this, rest.simple(), Toast.LENGTH_LONG).show()
+            toastLong(rest.simple())
         }, onSuccess = {
             viewModel.saveMuserConfig(muserConfig, CObserver(onError = {
-                Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
+                toastLong(it.simple())
             }, onFinish = {
-                Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show()
+                toastShort("Your profile has been modified successfully.")
             }))
         }))
     }
@@ -110,22 +109,22 @@ class ProfileActivity : BaseDaggerActivity() {
     private fun tryChangePassword(oldPassword: String, newPassword: String) {
         register(net.api.changePassword(oldPassword, newPassword), {
             viewModel.invalidateMuserConfig()
-            Toast.makeText(this, "Your password has been changed successfully.", Toast.LENGTH_SHORT).show()
+            toastShort("Your password has been changed successfully.")
             setResult(Activity.RESULT_CANCELED)
             finish()
         }, {
-            Toast.makeText(this, if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
+            toastShort(if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.")
         })
     }
 
     private fun tryWithdraw(username: String, password: String) {
         register(net.api.withdraw(username, password), {
             viewModel.invalidateMuserConfig()
-            Toast.makeText(this, "Your membership has been removed successfully.", Toast.LENGTH_SHORT).show()
+            toastShort("Your membership has been removed successfully.")
             setResult(RESULT_CANCELED)
             finish()
         }, {
-            Toast.makeText(this, "Withdrawal did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
+            toastShort("Withdrawal did not finish successfully. Please try again.")
         })
     }
 

@@ -11,7 +11,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.view.*
-import android.widget.Toast
 import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
@@ -33,7 +32,7 @@ class ChatActivity : BaseDaggerActivity() {
         override fun onReceive(context: Context?, intent: Intent) {
             val messageId = intent.getIntExtra("message_id", -1)
             viewModel.loadMessage(messageId, HObserver(onError = {
-                Toast.makeText(this@ChatActivity, it.zip(), Toast.LENGTH_SHORT).show()
+                toastLong(it.zip())
             }))
         }
     }
@@ -88,7 +87,7 @@ class ChatActivity : BaseDaggerActivity() {
 
     private fun tryLoadAllMessages() {
         viewModel.loadMessages(HObserver(onError = {
-            Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
+            toastLong(it.simple())
         }))
     }
 
@@ -100,7 +99,7 @@ class ChatActivity : BaseDaggerActivity() {
         eTtext.setText("")
 
         viewModel.saveMessage(text, HObserver(onError = {
-            Toast.makeText(this, it.simple(), Toast.LENGTH_LONG).show()
+            toastLong(it.simple())
             eTtext.setText(text)
             eTtext.setSelection(selectionStart, selectionEnd)
         }))
@@ -122,13 +121,13 @@ class ChatActivity : BaseDaggerActivity() {
             if(it.autoSignIn && it.token != null) {
                 if (net.isConnectedToInternet) {
                     register(net.api.loadMyInfo(), onSuccess = {
-                        Toast.makeText(this@ChatActivity, "Signed in as ${it.username}", Toast.LENGTH_SHORT).show()
+                        toastShort("Signed in as ${it.username}")
                         tryLoadAllMessages()
                     }, onError = {
                         openSignActivity()
                     })
                 } else {
-                    Toast.makeText(this@ChatActivity, "OFFLINE MODE as ${it.username}", Toast.LENGTH_SHORT).show()
+                    toastShort("OFFLINE MODE as ${it.username}")
                     tryLoadAllMessages()
                 }
             } else {
@@ -159,7 +158,7 @@ class ChatActivity : BaseDaggerActivity() {
         val current = System.currentTimeMillis()
         val delta = current - lastBackPressed
         if (delta > 1500) {
-            Toast.makeText(this, "Press once more to exit.", Toast.LENGTH_SHORT).show()
+            toastShort("Press once more to exit.")
             lastBackPressed = current
             return
         }

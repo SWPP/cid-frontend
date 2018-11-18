@@ -8,7 +8,6 @@ import androidx.databinding.DataBindingUtil
 import android.os.Bundle
 import androidx.constraintlayout.widget.ConstraintLayout
 import android.widget.LinearLayout
-import android.widget.Toast
 import com.cid.bot.data.MuserConfig
 import com.cid.bot.databinding.ActivitySignBinding
 import com.google.firebase.iid.FirebaseInstanceId
@@ -99,7 +98,7 @@ class SignActivity : BaseDaggerActivity() {
     private fun trySignIn() {
         val pushToken = pushToken
         if (pushToken == null) {
-            Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
+            toastShort("Try later.")
             return
         }
 
@@ -118,7 +117,7 @@ class SignActivity : BaseDaggerActivity() {
                 finish()
             }))
         }, {
-            Toast.makeText(this, it.zip(), Toast.LENGTH_SHORT).show()
+            toastLong(it.zip())
         })
     }
 
@@ -129,20 +128,19 @@ class SignActivity : BaseDaggerActivity() {
 
         if (password != passwordConfirm) {
             val error = "Passwords are not identical."
-            Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
             binding.root.applyErrors(mapOf("password" to error, "password_confirm" to error))
             return
         }
 
         register(net.api.signUp(username, password), {
-            Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
+            toastLong("You have been signed up for our membership.\nPlease sign in to use our service.")
             eTusername.setText("")
             eTpassword.setText("")
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
             val rest = binding.root.applyErrors(it)
-            Toast.makeText(this, rest.simple(), Toast.LENGTH_LONG).show()
+            toastLong(rest.simple())
         })
     }
 

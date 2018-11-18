@@ -1,5 +1,6 @@
 package com.cid.bot
 
+import android.widget.Toast
 import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.Observable
@@ -22,6 +23,14 @@ abstract class BaseDaggerActivity : DaggerAppCompatActivity() {
         }, {
             onFinish()
         })
+    }
+
+    fun toastShort(content: Any?) {
+        Toast.makeText(this, content.toString(), Toast.LENGTH_SHORT).show()
+    }
+
+    fun toastLong(content: Any?) {
+        Toast.makeText(this, content.toString(), Toast.LENGTH_LONG).show()
     }
 
     override fun onDestroy() {
