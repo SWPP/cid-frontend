@@ -122,6 +122,8 @@ class SignActivity : BaseDaggerActivity() {
     }
 
     private fun trySignUp() {
+        binding.root.resetErrors()
+
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
         val passwordConfirm = eTpasswordConfirm.text.toString()

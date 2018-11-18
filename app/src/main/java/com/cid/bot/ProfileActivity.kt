@@ -76,6 +76,8 @@ class ProfileActivity : BaseDaggerActivity() {
     }
 
     private fun trySaveInfo() {
+        binding.root.resetErrors()
+
         val gender = sPgender.selectedItemPosition
         val birthdate = eTbirthdate.text.toString().let {
             if (it.isNotEmpty()) it else null

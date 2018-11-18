@@ -32,6 +32,7 @@ fun Map<String, String>.simple(message: String = "Error Occurred."): String {
 }
 
 fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
+    resetErrors()
     val list = mutableListOf<String>()
     val rest = mutableMapOf<String, String>()
     var first = true
@@ -50,6 +51,21 @@ fun View.applyErrors(errors: Map<String, String>): Map<String, String> {
     }
     tag = list
     return rest
+}
+
+fun View.resetErrors() {
+    val list = tag as? List<*> ?: return
+    val rest = mutableListOf<String>()
+    for (key in list) {
+        key as? String ?: continue
+        try {
+            val view = findViewWithTag(key) as EditText
+            view.error = null
+        } catch (e: ClassCastException) {
+            rest.add(key)
+        }
+    }
+    tag = rest
 }
 
 fun <T> singleObservable(func: () -> T): Observable<T> {
