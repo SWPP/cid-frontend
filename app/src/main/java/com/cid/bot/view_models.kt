@@ -1,5 +1,6 @@
 package com.cid.bot
 
+import android.animation.ValueAnimator
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -16,6 +17,7 @@ import java.lang.Exception
 import java.lang.IllegalArgumentException
 import javax.inject.Inject
 import javax.inject.Provider
+import kotlin.math.abs
 import kotlin.reflect.KClass
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
@@ -115,6 +117,26 @@ open class BaseViewModel : ViewModel() {
                 .subscribe(*observers)
     }
 
+    val loadingAlpha = ObservableField<Float>()
+    private var loadingAnim: ValueAnimator? = null
+    fun setLoading(isLoading: Boolean) {
+        if (loadingAnim?.isRunning == true) loadingAnim?.cancel()
+
+        val valueFrom = loadingAlpha.get() ?: 0f
+        val valueTo = if (isLoading) 1f else 0f
+
+        loadingAnim = ValueAnimator.ofFloat(valueFrom, valueTo).apply {
+            duration = (100 * abs(valueTo - valueFrom)).toLong()
+
+            addUpdateListener {
+                val value = it.animatedValue as Float
+                loadingAlpha.set(value)
+            }
+
+            start()
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         if (!compositeDisposable.isDisposed)
@@ -125,14 +147,13 @@ open class BaseViewModel : ViewModel() {
 class ProfileViewModel @Inject constructor(private val muserRepo: MuserRepository, private val muserConfigRepo: MuserConfigRepository) : BaseViewModel() {
     val muser = ObservableField<Muser>()
     val muserConfig = ObservableField<MuserConfig>()
-    val isLoading = ObservableField<Boolean>()
 
     fun loadMuser(vararg observers: HObserver<Muser>) {
-        isLoading.set(true)
+        setLoading(true)
         call(muserRepo.getMuser(), HObserver(onSuccess = {
             muser.set(it)
         }, onFinish = {
-            isLoading.set(false)
+            setLoading(false)
         }), *observers)
     }
 
@@ -164,14 +185,13 @@ class ProfileViewModel @Inject constructor(private val muserRepo: MuserRepositor
 class ChatViewModel @Inject constructor(private val messageRepo: MessageRepository, private val muserConfigRepo: MuserConfigRepository) : BaseViewModel() {
     val muserConfig = ObservableField<MuserConfig>()
     val messages = MutableLiveData<MutableList<Message>>()
-    val isLoading = ObservableField<Boolean>()
 
     fun loadMessages(vararg observers: HObserver<List<Message>>) {
-        isLoading.set(true)
+        setLoading(true)
         call(messageRepo.getMessages(), HObserver(onSuccess = {
             messages.value = it.toMutableList()
         }, onFinish = {
-            isLoading.set(false)
+            setLoading(false)
         }), *observers)
     }
 

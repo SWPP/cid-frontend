@@ -31,7 +31,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginEnd="8dp"
                 android:layout_marginBottom="8dp"
-                android:visibility="@{viewModel.isLoading ? View.VISIBLE : View.INVISIBLE}"
+                android:alpha="@{viewModel.loadingAlpha}"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -42,7 +42,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:indeterminate="true"
-                android:visibility="@{!viewModel.isLoading ? View.VISIBLE : View.INVISIBLE}"
+                android:alpha="@{1f - viewModel.loadingAlpha}"
                 tools:listitem="@layout/item_message" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 

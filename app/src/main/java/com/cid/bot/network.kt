@@ -111,6 +111,7 @@ class NetworkManager @Inject constructor(private val context: Context) {
         chain.proceed(request)
     }
     val api: ChatBotAPI = Retrofit.Builder()
+//            .baseUrl("http://52.78.179.149")
             .baseUrl("http://10.0.2.2:8000")    /* development environment */
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(
