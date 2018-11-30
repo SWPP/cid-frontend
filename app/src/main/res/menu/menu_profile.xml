@@ -3,8 +3,13 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/mIrefresh"
+        android:icon="@drawable/ic_refresh_black_24dp"
+        android:title="Refresh"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/mIsave"
         android:icon="@drawable/ic_save_black_24dp"
         android:title="Save"
-        app:showAsAction="always" />
+        app:showAsAction="ifRoom" />
 </menu>
