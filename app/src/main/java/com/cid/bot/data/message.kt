@@ -12,8 +12,11 @@ data class Message(
         val sender: String?,
         val receiver: String?,
         val text: String,
-        val created: String? = null
+        val created: String? = null,
+        @Embedded val music: Music? = null,
+        val chips: List<Int> = listOf()
 )
+
 
 class MessageRepository @Inject constructor(private val networkManager: NetworkManager) {
     @Inject lateinit var remoteSource: MessageRemoteSource
