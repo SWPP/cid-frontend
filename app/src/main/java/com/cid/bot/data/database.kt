@@ -6,7 +6,7 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import com.google.gson.Gson
 
-@Database(entities = [Muser::class, Message::class], version = 9)
+@Database(entities = [Muser::class, Message::class], version = 10)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun muserDao(): MuserDao

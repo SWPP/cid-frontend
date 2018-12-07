@@ -1,6 +1,8 @@
 package com.cid.bot
 
 import android.animation.ValueAnimator
+import android.graphics.Bitmap
+import android.widget.ImageView
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -19,6 +21,8 @@ import javax.inject.Inject
 import javax.inject.Provider
 import kotlin.math.abs
 import kotlin.reflect.KClass
+import androidx.databinding.BindingAdapter
+
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
 @Retention(AnnotationRetention.RUNTIME)
@@ -185,6 +189,14 @@ class ProfileViewModel @Inject constructor(private val muserRepo: MuserRepositor
 class ChatViewModel @Inject constructor(private val messageRepo: MessageRepository, private val muserConfigRepo: MuserConfigRepository) : BaseViewModel() {
     val muserConfig = ObservableField<MuserConfig>()
     val messages = MutableLiveData<MutableList<Message>>()
+
+    companion object {
+        @JvmStatic
+        @BindingAdapter("imageBitmap")
+        fun loadImageBitmap(view: ImageView, bitmap: Bitmap?) {
+            view.setImageBitmap(bitmap)
+        }
+    }
 
     fun loadMessages(vararg observers: HObserver<List<Message>>) {
         setLoading(true)

@@ -9,7 +9,11 @@
         <variable
             name="message"
             type="com.cid.bot.data.Message"/>
+        <variable
+            name="imageBitmap"
+            type="android.graphics.Bitmap"/>
     </data>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -33,7 +37,7 @@
             android:orientation="vertical"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/space"
-            app:layout_constraintStart_toEndOf="@+id/imageViewMubot"
+            app:layout_constraintStart_toEndOf="@+id/barrier2"
             app:layout_constraintTop_toBottomOf="@+id/textView5">
 
             <androidx.cardview.widget.CardView
@@ -88,9 +92,12 @@
                         android:layout_marginStart="8dp"
                         android:layout_marginTop="8dp"
                         android:layout_marginBottom="8dp"
+                        android:visibility="@{imageBitmap == null ? View.GONE : View.VISIBLE}"
+                        app:imageBitmap="@{imageBitmap}"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintDimensionRatio="1:1"
                         app:layout_constraintEnd_toStartOf="@+id/guideline"
+                        app:layout_constraintHorizontal_bias="0.0"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
                         tools:srcCompat="@tools:sample/backgrounds/scenic" />
@@ -106,8 +113,10 @@
                         android:maxLines="2"
                         android:text="@{message.music.title}"
                         android:textSize="18sp"
+                        app:layout_constraintBottom_toTopOf="@+id/tVartist"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="@+id/guideline"
+                        app:layout_constraintHorizontal_bias="0.5"
+                        app:layout_constraintStart_toEndOf="@+id/imageView"
                         app:layout_constraintTop_toTopOf="parent"
                         tools:text="Title" />
 
@@ -115,15 +124,16 @@
                         android:id="@+id/tVartist"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
                         android:layout_marginTop="8dp"
                         android:layout_marginEnd="8dp"
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@{message.music.artistsRep}"
                         android:textSize="12sp"
+                        app:layout_constraintBottom_toTopOf="@+id/tValbum"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="@+id/guideline"
+                        app:layout_constraintHorizontal_bias="0.5"
+                        app:layout_constraintStart_toStartOf="@+id/tVtitle"
                         app:layout_constraintTop_toBottomOf="@+id/tVtitle"
                         tools:text="Artist" />
 
@@ -131,7 +141,6 @@
                         android:id="@+id/tValbum"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
                         android:layout_marginTop="8dp"
                         android:layout_marginEnd="8dp"
                         android:layout_marginBottom="8dp"
@@ -141,7 +150,8 @@
                         android:textSize="12sp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="@+id/guideline"
+                        app:layout_constraintHorizontal_bias="0.5"
+                        app:layout_constraintStart_toStartOf="@+id/tVtitle"
                         app:layout_constraintTop_toBottomOf="@+id/tVartist"
                         app:layout_constraintVertical_bias="0.0"
                         tools:text="Album" />
@@ -170,6 +180,15 @@
             app:layout_constraintTop_toTopOf="@+id/imageViewMubot" />
 
         <Space
+            android:id="@+id/space2"
+            android:layout_width="50dp"
+            android:layout_height="0dp"
+            android:visibility="@{message.receiver == null ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Space
             android:id="@+id/space"
             android:layout_width="35dp"
             android:layout_height="0dp"
@@ -177,6 +196,14 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/barrier2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="imageViewMubot, space2"
+            app:barrierDirection="end"
+            tools:layout_editor_absoluteX="376dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

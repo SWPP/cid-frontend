@@ -1,10 +1,13 @@
 package com.cid.bot
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import android.content.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.databinding.DataBindingUtil
 import android.os.Bundle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -14,7 +17,14 @@ import android.view.*
 import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_chat.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.net.URL
 import javax.inject.Inject
 
 class ChatActivity : BaseDaggerActivity() {
@@ -26,7 +36,7 @@ class ChatActivity : BaseDaggerActivity() {
     @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
     lateinit var viewModel: ChatViewModel
     private lateinit var binding: ActivityChatBinding
-    private val messageAdapter = MessageAdapter(mutableListOf())
+    private lateinit var messageAdapter: MessageAdapter
 
     private val messagingReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
@@ -50,6 +60,7 @@ class ChatActivity : BaseDaggerActivity() {
         val layoutManager = LinearLayoutManager(applicationContext)
         layoutManager.stackFromEnd = true
         rVmessages.layoutManager = layoutManager
+        messageAdapter = MessageAdapter(mutableListOf(), ContextWrapper(this).getDir("imageDir", Context.MODE_PRIVATE))
         rVmessages.adapter = messageAdapter
         viewModel.messages.observe(this, Observer { messages ->
             messages ?: return@Observer
@@ -191,7 +202,7 @@ class ChatActivity : BaseDaggerActivity() {
         return true
     }
 
-    class MessageAdapter(val messages: MutableList<Message>) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+    class MessageAdapter(val messages: MutableList<Message>, private val imageDirectory: File) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
             val binding = ItemMessageBinding.inflate(inflater, parent, false)
@@ -201,13 +212,54 @@ class ChatActivity : BaseDaggerActivity() {
         override fun getItemCount() = messages.size
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(messages[position])
+            holder.bind(messages[position], imageDirectory)
         }
 
-        class ViewHolder(private val binding: ItemMessageBinding) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(message: Message) {
+       class ViewHolder(private val binding: ItemMessageBinding) : RecyclerView.ViewHolder(binding.root) {
+            @SuppressLint("CheckResult")
+            fun bind(message: Message, imageDirectory: File) {
                 binding.message = message
+                binding.imageBitmap = null
                 binding.executePendingBindings()
+
+                /* Set Album Image */
+                val music = message.music ?: return
+                val albumId = music.albumId ?: return
+                if (albumId == 0) return
+                val imageFileName = "album_image_$albumId.jpg"
+                val path = File(imageDirectory, imageFileName)
+
+                singleObservable {
+                    /* Get Image Bitmap From Local Storage */
+                    try {
+                        with(BitmapFactory.decodeStream(FileInputStream(path))) {
+                            if (this != null) return@singleObservable this
+                        }
+                    } catch (e: FileNotFoundException) {}
+
+                    /* Get Image Bitmap From Remote Storage */
+                    val url = URL("$BASE_URL/chatbot/album-image/$albumId/")
+                    val conn = url.openConnection()
+                    conn.doInput = true
+                    conn.connect()
+                    val input = conn.getInputStream()
+                    val bitmap = BitmapFactory.decodeStream(input)
+
+                    /* Save Image Bitmap To Local Storage */
+                    val fos = FileOutputStream(path)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                    fos.close()
+
+                    /* Return Bitmap Instance */
+                    return@singleObservable bitmap
+                }.subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe({
+                            binding.imageBitmap = it
+                            binding.executePendingBindings()
+                        }, {
+
+                        })
             }
         }
     }
