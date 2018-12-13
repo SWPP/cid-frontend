@@ -101,6 +101,9 @@ fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
     })
 }
 
+const val BASE_URL = "http://52.78.179.149"
+//    const val BASE_URL = "http://10.0.2.2:8000" /* development environment */
+
 @Singleton
 class NetworkManager @Inject constructor(private val context: Context) {
     var authToken: String? = null
@@ -111,7 +114,7 @@ class NetworkManager @Inject constructor(private val context: Context) {
         chain.proceed(request)
     }
     val api: ChatBotAPI = Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8000")    /* development environment */
+            .baseUrl(BASE_URL)
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(
                     GsonBuilder().serializeNulls().create()

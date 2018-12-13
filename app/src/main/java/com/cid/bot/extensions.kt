@@ -93,3 +93,10 @@ fun <T> Observable<HResult<T>>.andSave(
 fun SharedPreferences.commit(func: SharedPreferences.Editor.() -> Unit) {
     edit().apply(func).apply()
 }
+
+fun <T> List<T>.ellipsize(max: Int = 2): String {
+    val sub = TextUtils.join(", ", this.subList(0, kotlin.math.min(size, max)))
+    if (this.size <= max)
+        return sub
+    return "$sub, ..."
+}
