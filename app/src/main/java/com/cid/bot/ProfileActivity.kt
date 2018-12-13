@@ -1,27 +1,38 @@
 package com.cid.bot
 
 import android.app.Activity
-import android.support.v7.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.databinding.DataBindingUtil
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.EditText
-import android.widget.Toast
-import io.reactivex.disposables.Disposable
+import com.cid.bot.databinding.ActivityProfileBinding
 import kotlinx.android.synthetic.main.activity_profile.*
+import javax.inject.Inject
 
-class ProfileActivity : AppCompatActivity() {
-    private lateinit var muser: Muser
+class ProfileActivity : BaseDaggerActivity() {
+    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    lateinit var viewModel: ProfileViewModel
+    private lateinit var binding: ActivityProfileBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_profile)
+
+        /* Binding */
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_profile)
+        viewModel = ViewModelProviders.of(this, viewModelFactory).get(ProfileViewModel::class.java)
+        binding.viewModel = viewModel
+        binding.executePendingBindings()
+
+        /* Set Result for finish */
         setResult(Activity.RESULT_OK)
 
+        /* Listeners */
         bTchangePassword.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_change_password, null)
-
             val dialog = AlertDialog.Builder(this)
                     .setTitle("Change Password")
                     .setMessage("Please input your current password and new password")
@@ -34,17 +45,15 @@ class ProfileActivity : AppCompatActivity() {
                 val newPassword = layout.findViewById<EditText>(R.id.eTnewPassword).text.toString()
                 val newPasswordConfirm = layout.findViewById<EditText>(R.id.eTnewPasswordConfirm).text.toString()
                 if (newPassword != newPasswordConfirm) {
-                    Toast.makeText(this, "New Passwords are not identical.", Toast.LENGTH_SHORT).show()
+                    toastShort("New Passwords are not identical.")
                 } else {
                     tryChangePassword(currentPassword, newPassword)
                     dialog.dismiss()
                 }
             }
         }
-
         bTwithdraw.setOnClickListener {
             val layout = layoutInflater.inflate(R.layout.dialog_withdraw, null)
-
             AlertDialog.Builder(this)
                     .setTitle("Withdraw")
                     .setMessage("Please input your username and password.")
@@ -61,87 +70,63 @@ class ProfileActivity : AppCompatActivity() {
         tryLoadInfo()
     }
 
-    private fun refresh(muser: Muser) {
-        this.muser = muser
-        eTbirthdate.setText(muser.birthdate)
-        sPgender.setSelection(muser.gender)
-    }
-
-    private var loadInfoTask: Disposable? = null
     private fun tryLoadInfo() {
-        if (loadInfoTask != null) return
-
-        loadInfoTask = NetworkManager.call(API.loadMyInfo(), {
-            refresh(it)
-            sCautoSignIn.isChecked = getSharedPreferences(getString(R.string.pref_name_sign), 0).getBoolean(getString(R.string.pref_key_auto_sign_in), false)
-            if (!sCautoSignIn.isChecked) sCautoSignIn.isEnabled = false
-        }, {
-            Toast.makeText(this, "Could not load profile temporarily. Please try later.", Toast.LENGTH_SHORT).show()
-            finish()
-        }, {
-            loadInfoTask = null
-        })
+        viewModel.loadMuser()
+        viewModel.loadMuserConfig()
     }
 
-    private var saveInfoTask: Disposable? = null
     private fun trySaveInfo() {
-        if (saveInfoTask != null) return
+        binding.root.resetErrors()
 
         val gender = sPgender.selectedItemPosition
         val birthdate = eTbirthdate.text.toString().let {
             if (it.isNotEmpty()) it else null
         }
 
-        val muser = muser.copy(
+        val muser = viewModel.muser.get()?.copy(
                 gender = gender,
                 birthdate = birthdate
         )
+        val muserConfig = viewModel.muserConfig.get()?.copy(
+                autoSignIn = sCautoSignIn.isChecked
+        )
+        if (muser == null || muserConfig == null) {
+            tryLoadInfo()
+            toastShort("Try later.")
+            return
+        }
 
-        saveInfoTask = NetworkManager.call(API.saveMyInfo(muser), {
-            Toast.makeText(this, "Your profile has been modified successfully.", Toast.LENGTH_SHORT).show();
-            refresh(it)
-            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
-                putBoolean(getString(R.string.pref_key_auto_sign_in), sCautoSignIn.isChecked)
-                if (sCautoSignIn.isChecked)
-                    putString(getString(R.string.pref_key_token), NetworkManager.authToken)
-                else
-                    sCautoSignIn.isEnabled = false
-                apply()
-            }
-        }, {
-            Toast.makeText(this, "Please try later.", Toast.LENGTH_SHORT).show()
-        }, {
-            saveInfoTask = null
-        })
+        viewModel.saveMuser(muser, HObserver(onError = {
+            val rest = binding.root.applyErrors(it)
+            toastLong(rest.simple())
+        }, onSuccess = {
+            viewModel.saveMuserConfig(muserConfig, CObserver(onError = {
+                toastLong(it.simple())
+            }, onFinish = {
+                toastShort("Your profile has been modified successfully.")
+            }))
+        }))
     }
 
-    private var changePasswordTask: Disposable? = null
     private fun tryChangePassword(oldPassword: String, newPassword: String) {
-        if (changePasswordTask != null) return
-
-        changePasswordTask = NetworkManager.call(API.changePassword(oldPassword, newPassword), {
-            Toast.makeText(this, "Your password has been changed successfully.", Toast.LENGTH_SHORT).show()
+        register(net.api.changePassword(oldPassword, newPassword), {
+            viewModel.invalidateMuserConfig()
+            toastShort("Your password has been changed successfully.")
             setResult(Activity.RESULT_CANCELED)
             finish()
         }, {
-            Toast.makeText(this, if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            changePasswordTask = null
+            toastShort(if ("error" in it) it["error"] else "Changing password did not finish successfully. Please try again.")
         })
     }
 
-    private var withdrawTask: Disposable? = null
     private fun tryWithdraw(username: String, password: String) {
-        if (withdrawTask != null) return
-
-        withdrawTask = NetworkManager.call(API.withdraw(username, password), {
-            Toast.makeText(this, "Your membership has been removed successfully.", Toast.LENGTH_SHORT).show()
+        register(net.api.withdraw(username, password), {
+            viewModel.invalidateMuserConfig()
+            toastShort("Your membership has been removed successfully.")
             setResult(RESULT_CANCELED)
             finish()
         }, {
-            Toast.makeText(this, "Withdrawal did not finish successfully. Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            withdrawTask = null
+            toastShort("Withdrawal did not finish successfully. Please try again.")
         })
     }
 
@@ -151,20 +136,15 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
+        when (item.itemId) {
+            R.id.mIrefresh -> {
+                tryLoadInfo()
+            }
             R.id.mIsave -> {
                 trySaveInfo()
-                true
             }
-            else -> super.onOptionsItemSelected(item)
+            else -> return super.onOptionsItemSelected(item)
         }
-    }
-
-    override fun onDestroy() {
-        loadInfoTask?.dispose()
-        saveInfoTask?.dispose()
-        changePasswordTask?.dispose()
-        withdrawTask?.dispose()
-        super.onDestroy()
+        return true
     }
 }

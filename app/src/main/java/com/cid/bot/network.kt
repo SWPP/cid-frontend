@@ -1,11 +1,16 @@
 package com.cid.bot
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.text.TextUtils
+import com.cid.bot.data.Message
+import com.cid.bot.data.Muser
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
+import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -17,26 +22,8 @@ import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
-
-private val interceptor = object : Interceptor {
-    val authToken: String
-        get() = if (NetworkManager.authToken == null) "" else "Token ${NetworkManager.authToken}"
-
-    override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
-        val original = chain.request()
-        val builder = original.newBuilder().header("Authorization", authToken)
-        val request = builder.build()
-        return chain.proceed(request)
-    }
-}
-val API: ChatBotAPI = Retrofit.Builder()
-        .baseUrl("http://52.78.179.149")
-        .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-        .addConverterFactory(GsonConverterFactory.create(
-                GsonBuilder().serializeNulls().create()
-        ))
-        .client(OkHttpClient.Builder().addInterceptor(interceptor).build())
-        .build().create(ChatBotAPI::class.java)
+import javax.inject.Inject
+import javax.inject.Singleton
 
 interface ChatBotAPI {
     @FormUrlEncoded
@@ -84,8 +71,62 @@ interface ChatBotAPI {
     fun sendMessage(@Field("text") text: String): Observable<Response<Message>>
 }
 
-object NetworkManager {
+fun String?.toMap(): Map<String, String> = HashMap<String, String>().apply {
+    val errorString = if (this@toMap.isNullOrBlank()) "{\"_\":\"Unknown Error\"}" else this@toMap
+    val jsonObject = JSONObject(errorString)
+    for (key in jsonObject.keys()) {
+        val list = try {
+            jsonObject.getJSONArray(key)
+        } catch (e: JSONException) {
+            JSONArray("[\"${jsonObject.get(key)}\"]")
+        }
+        val strings = mutableListOf<String>()
+        for (i in 0 until list.length()) {
+            strings += list.get(i).toString()
+        }
+
+        this[key] = TextUtils.join("\n", strings)
+    }
+}
+
+fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
+    return map { response ->
+        if (response.isSuccessful)
+            HResult(response.body()!!)
+        else
+            HResult(response.errorBody()?.string().toMap())
+    }.onErrorResumeNext(Function {
+        it.printStackTrace()
+        it.message?.let { Observable.just(HResult(mapOf("exception" to it))) }
+    })
+}
+
+const val BASE_URL = "http://52.78.179.149"
+//    const val BASE_URL = "http://10.0.2.2:8000" /* development environment */
+
+@Singleton
+class NetworkManager @Inject constructor(private val context: Context) {
     var authToken: String? = null
+    private val interceptor = Interceptor { chain ->
+        val original = chain.request()
+        val builder = original.newBuilder().header("Authorization", if (authToken == null) "" else "Token $authToken")
+        val request = builder.build()
+        chain.proceed(request)
+    }
+    val api: ChatBotAPI = Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(
+                    GsonBuilder().serializeNulls().create()
+            ))
+            .client(OkHttpClient.Builder().addInterceptor(interceptor).build())
+            .build().create(ChatBotAPI::class.java)
+    val isConnectedToInternet: Boolean
+        get() {
+            val conManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val ni = conManager.activeNetworkInfo
+            return ni != null && ni.isConnected
+        }
 
     /**
      * Helper function of API methods.
@@ -108,30 +149,16 @@ object NetworkManager {
                 .subscribe({ response ->
                     onFinish()
                     if (response.isSuccessful)
-                        response.body()?.let { onSuccess(it) }
+                        response.body()?.also { onSuccess(it) }
                     else {
-                        onError(HashMap<String, String>().apply {
-                            val errorString = response.errorBody()?.string() ?: ""
-                            val jsonObject = JSONObject(errorString)
-                            for (key in jsonObject.keys()) {
-                                var list: JSONArray? = null
-                                try {
-                                    list = jsonObject.getJSONArray(key)
-                                } catch (e: JSONException) {}
-                                if (list == null) list = JSONArray("[\"${jsonObject.getString(key)}\"")
-
-                                val strings = mutableListOf<String>()
-                                for (i in 0 until list.length()) {
-                                    strings += list.getString(i)
-                                }
-
-                                this[key] = TextUtils.join("\n", strings)
-                            }
-                        })
+                        onError(response.errorBody()?.string().toMap())
                     }
                 }, { error ->
                     onFinish()
-                    error.message?.let { onError(mapOf("exception" to it)) }
+                    error.message?.also { onError(_networkError) }
                 })
     }
+
+    private val _networkError = mapOf("Network" to "Failed to connect to the server")
+    fun <T> getNetworkError() = HResult<T>(_networkError)
 }

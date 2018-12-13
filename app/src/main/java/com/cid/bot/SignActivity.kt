@@ -2,18 +2,25 @@ package com.cid.bot
 
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.support.v7.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.databinding.DataBindingUtil
 import android.os.Bundle
-import android.support.constraint.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintLayout
 import android.widget.LinearLayout
-import android.widget.Toast
+import com.cid.bot.data.MuserConfig
+import com.cid.bot.databinding.ActivitySignBinding
 import com.google.firebase.iid.FirebaseInstanceId
-import io.reactivex.disposables.Disposable
 import kotlinx.android.synthetic.main.activity_sign.*
+import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.max
 
-class SignActivity : AppCompatActivity() {
+class SignActivity : BaseDaggerActivity() {
+    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
+    lateinit var viewModel: SignViewModel
+    private lateinit var binding: ActivitySignBinding
+
     enum class Mode(val value: Float, val string: String) {
         SIGN_IN(0f, "Sign In"), SIGN_UP(1f, "Sign Up")
     }
@@ -22,19 +29,18 @@ class SignActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_sign)
 
+        /* Binding */
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_sign)
+        viewModel = ViewModelProviders.of(this, viewModelFactory).get(SignViewModel::class.java)
+        binding.viewModel = viewModel
+        binding.executePendingBindings()
+
+        /* Configure */
         supportActionBar?.title = Mode.SIGN_IN.string
         setResult(Activity.RESULT_CANCELED)
-        NetworkManager.authToken = null
 
-        with (getSharedPreferences(getString(R.string.pref_name_sign), 0)) {
-            cBautoSignIn.isChecked = getBoolean(getString(R.string.pref_key_auto_sign_in), false)
-            cBsaveUsername.isChecked = getBoolean(getString(R.string.pref_key_save_username), false)
-            if (cBsaveUsername.isChecked)
-                eTusername.setText(getString(getString(R.string.pref_key_username), ""))
-        }
-
+        /* Listeners */
         bTsignIn.setOnClickListener {
             if (mode == Mode.SIGN_IN)
                 trySignIn()
@@ -49,6 +55,7 @@ class SignActivity : AppCompatActivity() {
                 changeMode(Mode.SIGN_UP)
         }
 
+        viewModel.invalidateMuserConfig()
         getPushToken()
     }
 
@@ -88,65 +95,54 @@ class SignActivity : AppCompatActivity() {
         }.start()
     }
 
-    private var signInTask: Disposable? = null
     private fun trySignIn() {
-        if (signInTask != null) return
-
         val pushToken = pushToken
         if (pushToken == null) {
-            Toast.makeText(this, "Try later.", Toast.LENGTH_SHORT).show()
+            toastShort("Try later.")
             return
         }
 
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
 
-        signInTask = NetworkManager.call(API.signIn(username, password, pushToken), {
+        register(net.api.signIn(username, password, pushToken), {
             val token = it["token"].asString
-            NetworkManager.authToken = token
-            with (getSharedPreferences(getString(R.string.pref_name_sign), 0).edit()) {
-                putBoolean(getString(R.string.pref_key_auto_sign_in), cBautoSignIn.isChecked)
-                if (cBautoSignIn.isChecked) {
-                    putString(getString(R.string.pref_key_token), token)
-                }
-                putBoolean(getString(R.string.pref_key_save_username), cBsaveUsername.isChecked)
-                if (cBsaveUsername.isChecked) {
-                    putString(getString(R.string.pref_key_username), username)
-                }
-                apply()
-            }
-            setResult(RESULT_OK)
-            finish()
+            viewModel.saveMuserConfig(MuserConfig(
+                    autoSignIn = cBautoSignIn.isChecked,
+                    token = token,
+                    saveUsername = cBsaveUsername.isChecked,
+                    username = if (cBsaveUsername.isChecked) username else null
+            ), CObserver(onFinish = {
+                setResult(RESULT_OK)
+                finish()
+            }))
         }, {
-            Toast.makeText(this, "Invalid username or password.", Toast.LENGTH_SHORT).show()
-        }, {
-            signInTask = null
+            toastLong(it.zip())
         })
     }
 
-    private var signUpTask: Disposable? = null
     private fun trySignUp() {
-        if (signUpTask != null) return
+        binding.root.resetErrors()
 
         val username = eTusername.text.toString()
         val password = eTpassword.text.toString()
         val passwordConfirm = eTpasswordConfirm.text.toString()
 
         if (password != passwordConfirm) {
-            Toast.makeText(this, "Passwords are not identical.", Toast.LENGTH_SHORT).show()
+            val error = "Passwords are not identical."
+            binding.root.applyErrors(mapOf("password" to error, "password_confirm" to error))
             return
         }
 
-        signUpTask = NetworkManager.call(API.signUp(username, password), {
-            Toast.makeText(this, "You have been signed up for our membership.\nPlease sign in to use our service.", Toast.LENGTH_LONG).show()
+        register(net.api.signUp(username, password), {
+            toastLong("You have been signed up for our membership.\nPlease sign in to use our service.")
             eTusername.setText("")
             eTpassword.setText("")
             eTpasswordConfirm.setText("")
             changeMode(Mode.SIGN_IN)
         }, {
-            Toast.makeText(this, if ("error" in it) it["error"] else "Please try again.", Toast.LENGTH_SHORT).show()
-        }, {
-            signUpTask = null
+            val rest = binding.root.applyErrors(it)
+            toastLong(rest.simple())
         })
     }
 
@@ -163,11 +159,5 @@ class SignActivity : AppCompatActivity() {
             Mode.SIGN_UP -> changeMode(Mode.SIGN_IN)
             else -> super.onBackPressed()
         }
-    }
-
-    override fun onDestroy() {
-        signInTask?.dispose()
-        signUpTask?.dispose()
-        super.onDestroy()
     }
 }
