@@ -14,6 +14,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.view.*
+import android.widget.RatingBar
+import androidx.appcompat.app.AlertDialog
 import com.cid.bot.data.Message
 import com.cid.bot.databinding.ActivityChatBinding
 import com.cid.bot.databinding.ItemMessageBinding
@@ -60,7 +62,7 @@ class ChatActivity : BaseDaggerActivity() {
         val layoutManager = LinearLayoutManager(applicationContext)
         layoutManager.stackFromEnd = true
         rVmessages.layoutManager = layoutManager
-        messageAdapter = MessageAdapter(mutableListOf(), ContextWrapper(this).getDir("imageDir", Context.MODE_PRIVATE))
+        messageAdapter = MessageAdapter(mutableListOf(), ContextWrapper(this).getDir("imageDir", Context.MODE_PRIVATE), this) { text -> eTtext.setText(text); trySendMessage() }
         rVmessages.adapter = messageAdapter
         viewModel.messages.observe(this, Observer { messages ->
             messages ?: return@Observer
@@ -202,7 +204,7 @@ class ChatActivity : BaseDaggerActivity() {
         return true
     }
 
-    class MessageAdapter(val messages: MutableList<Message>, private val imageDirectory: File) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
+    class MessageAdapter(val messages: MutableList<Message>, private val imageDirectory: File, private val context: Context, private val onSendMessage: (String) -> Unit) : RecyclerView.Adapter<MessageAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
             val binding = ItemMessageBinding.inflate(inflater, parent, false)
@@ -212,14 +214,18 @@ class ChatActivity : BaseDaggerActivity() {
         override fun getItemCount() = messages.size
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(messages[position], imageDirectory)
+            holder.bind(messages[position], imageDirectory, context, onSendMessage)
         }
 
-       class ViewHolder(private val binding: ItemMessageBinding) : RecyclerView.ViewHolder(binding.root) {
+        class ViewHolder(private val binding: ItemMessageBinding) : RecyclerView.ViewHolder(binding.root) {
             @SuppressLint("CheckResult")
-            fun bind(message: Message, imageDirectory: File) {
+            fun bind(message: Message, imageDirectory: File, context: Context, onSendMessage: (String) -> Unit) {
                 binding.message = message
                 binding.imageBitmap = null
+                binding.chip1 = null
+                binding.chip2 = null
+                binding.chip3 = null
+                binding.chip4 = null
                 binding.executePendingBindings()
 
                 /* Set Album Image */
@@ -260,6 +266,46 @@ class ChatActivity : BaseDaggerActivity() {
                         }, {
 
                         })
+
+                /* Set Suggested Chip List */
+                val chipList = message.chips.map {
+                    when (it) {
+                        1 -> Pair("rate it", View.OnClickListener {
+                            val layout = LayoutInflater.from(context).inflate(R.layout.dialog_rate, null)
+                            AlertDialog.Builder(context)
+                                    .setTitle("Rate")
+                                    .setMessage("Please rate on \"${message.music.title}\"")
+                                    .setView(layout)
+                                    .setPositiveButton("Rate") { _, _ ->
+                                        val rating = layout.findViewById<RatingBar>(R.id.ratingBar).rating
+                                        onSendMessage("I'll rate ${(rating * 2).toInt()} points on \"${message.music.title}\".")
+                                    }
+                                    .setNegativeButton("Cancel", null)
+                                    .show()
+                        })
+                        2 -> Pair("another one", View.OnClickListener {
+                            onSendMessage("Recommend another one, please.")
+                        })
+                        else -> Pair("unknown chip", null)
+                    }
+                }
+                if (chipList.isNotEmpty()) {
+                    binding.chip1 = chipList[0].first
+                    binding.chip1onClick = chipList[0].second
+                }
+                if (chipList.size >= 2) {
+                    binding.chip2 = chipList[1].first
+                    binding.chip2onClick = chipList[1].second
+                }
+                if (chipList.size >= 3) {
+                    binding.chip3 = chipList[2].first
+                    binding.chip3onClick = chipList[2].second
+                }
+                if (chipList.size >= 4) {
+                    binding.chip4 = chipList[3].first
+                    binding.chip4onClick = chipList[3].second
+                }
+                binding.executePendingBindings()
             }
         }
     }
