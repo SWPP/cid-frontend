@@ -14,8 +14,8 @@ android {
         applicationId "com.cid.bot"
         minSdkVersion 23
         targetSdkVersion 28
-        versionCode 3
-        versionName "0.7-beta"
+        versionCode 4
+        versionName "0.7-alpha"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "muBot-$versionName")
     }
