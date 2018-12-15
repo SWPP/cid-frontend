@@ -102,7 +102,7 @@ fun <T> Observable<Response<T>>.toHResult(): Observable<HResult<T>> {
 }
 
 const val BASE_URL = "http://52.78.179.149"
-//    const val BASE_URL = "http://10.0.2.2:8000" /* development environment */
+//const val BASE_URL = "http://10.0.2.2:8000" /* development environment */
 
 @Singleton
 class NetworkManager @Inject constructor(private val context: Context) {
